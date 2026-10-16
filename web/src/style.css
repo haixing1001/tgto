@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    @apply antialiased;
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-600 rounded;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors select-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+  }
+  .btn-ghost {
+    @apply btn bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600;
+  }
+  .btn-danger {
+    @apply btn bg-rose-500 text-white hover:bg-rose-600;
+  }
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
+  }
+  .label {
+    @apply block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+  .nav-item {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors;
+  }
+  .nav-item-active {
+    @apply bg-brand-500/10 text-brand-600 dark:text-brand-500 font-medium;
+  }
+  .nav-item-idle {
+    @apply text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60;
+  }
+  /* 光鸭短信验证码登录面板（参考设计：浅灰底容器 + 行内按钮组 + 状态行） */
+  .gy-login-panel {
+    @apply mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3;
+  }
+  .gy-login-panel-title {
+    @apply text-xs font-semibold text-slate-600 dark:text-slate-300;
+  }
+  .gy-login-warning {
+    @apply mt-1 text-[11px] text-amber-600 dark:text-amber-400;
+  }
+  .gy-login-controls {
+    @apply mt-3 flex flex-wrap items-center gap-2;
+  }
+  .gy-login-input {
+    @apply w-40 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
+  }
+  .gy-login-btn {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .gy-login-btn-stop {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .gy-login-status {
+    @apply mt-3 text-[11px] text-slate-400;
+  }
+  .gy-login-status.ok {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  /* 天翼云盘扫码登录面板 */
+  .ty-qr-panel {
+    @apply mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3;
+  }
+  .ty-qr-panel-title {
+    @apply text-xs font-semibold text-slate-600 dark:text-slate-300;
+  }
+  .ty-qr-hint {
+    @apply mt-1 text-[11px] text-slate-400 dark:text-slate-500;
+  }
+  .ty-qr-warning {
+    @apply mt-1 text-[11px] text-amber-600 dark:text-amber-400;
+  }
+  .ty-qr-controls {
+    @apply mt-3 flex flex-wrap items-center gap-2;
+  }
+  .ty-qr-btn {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .ty-qr-btn-stop {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .ty-qr-body {
+    @apply mt-3 flex items-center gap-4 flex-wrap;
+  }
+  .ty-qr-canvas {
+    @apply w-40 h-40 rounded-lg bg-white border border-slate-200 dark:border-slate-600 p-2 flex items-center justify-center;
+  }
+  .ty-qr-meta {
+    @apply flex-1 min-w-[10rem] text-[11px] text-slate-500 dark:text-slate-400 space-y-1;
+  }
+  .ty-qr-countdown {
+    @apply font-mono text-slate-600 dark:text-slate-300;
+  }
+  .ty-qr-status {
+    @apply mt-3 text-[11px] text-slate-400;
+  }
+  .ty-qr-status.ok {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  .ty-qr-status.warn {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+  .ty-qr-status.err {
+    @apply text-red-600 dark:text-red-400;
+  }
+  /* 光鸭文件管理面板 */
+  .gy-fm {
+    @apply mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 overflow-hidden;
+  }
+  .gy-fm-toolbar {
+    @apply flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60;
+  }
+  .gy-fm-crumb {
+    @apply text-xs text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-500 disabled:opacity-40 disabled:cursor-not-allowed max-w-[8rem] truncate;
+  }
+  .gy-fm-toggle {
+    @apply flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer select-none;
+  }
+  .gy-fm-btn {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors;
+  }
+  .gy-fm-btn-stop {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors;
+  }
+  .gy-fm-btn-danger {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 transition-colors;
+  }
+  .gy-fm-error {
+    @apply px-4 py-2 text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-100 dark:border-rose-900/40;
+  }
+  .gy-fm-table-wrap {
+    @apply overflow-x-auto max-h-[28rem] overflow-y-auto;
+  }
+  .gy-fm-table {
+    @apply w-full text-xs;
+  }
+  .gy-fm-table thead tr {
+    @apply bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400;
+  }
+  .gy-fm-table th {
+    @apply text-left px-4 py-2 font-medium whitespace-nowrap;
+  }
+  .gy-fm-table td {
+    @apply px-4 py-2 border-t border-slate-100 dark:border-slate-700/60 align-middle;
+  }
+  .gy-fm-table tbody tr:hover {
+    @apply bg-slate-50/70 dark:bg-slate-700/30;
+  }
+  .gy-fm-empty {
+    @apply px-4 py-10 text-center text-slate-400;
+  }
+  .gy-fm-name {
+    @apply text-slate-700 dark:text-slate-200;
+  }
+  .gy-fm-dir {
+    @apply text-brand-600 dark:text-brand-500 hover:underline cursor-pointer font-medium;
+  }
+  .gy-fm-ops {
+    @apply flex flex-wrap gap-1;
+  }
+  .gy-fm-op {
+    @apply px-1.5 py-0.5 rounded text-[11px] text-slate-500 dark:text-slate-400 hover:text-brand-500 hover:bg-brand-500/10 dark:hover:text-brand-500 transition-colors;
+  }
+  .gy-fm-op-danger {
+    @apply hover:text-rose-500 hover:bg-rose-500/10;
+  }
+  .gy-fm-foot {
+    @apply flex items-center gap-2 px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-[11px];
+  }
+  /* 天翼云盘文件管理面板 */
+  .ty-fm {
+    @apply mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 overflow-hidden;
+  }
+  .ty-fm-toolbar {
+    @apply flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60;
+  }
+  .ty-fm-crumb {
+    @apply text-xs text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-500 disabled:opacity-40 disabled:cursor-not-allowed max-w-[8rem] truncate;
+  }
+  .ty-fm-toggle {
+    @apply flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer select-none;
+  }
+  .ty-fm-btn {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors;
+  }
+  .ty-fm-btn-stop {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors;
+  }
+  .ty-fm-btn-danger {
+    @apply px-2.5 py-1 rounded-md text-[11px] font-medium bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 transition-colors;
+  }
+  .ty-fm-error {
+    @apply px-4 py-2 text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-b border-rose-100 dark:border-rose-900/40;
+  }
+  .ty-fm-table-wrap {
+    @apply overflow-x-auto max-h-[28rem] overflow-y-auto;
+  }
+  .ty-fm-table {
+    @apply w-full text-xs;
+  }
+  .ty-fm-table thead tr {
+    @apply bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400;
+  }
+  .ty-fm-table th {
+    @apply text-left px-4 py-2 font-medium whitespace-nowrap;
+  }
+  .ty-fm-table td {
+    @apply px-4 py-2 border-t border-slate-100 dark:border-slate-700/60 align-middle;
+  }
+  .ty-fm-table tbody tr:hover {
+    @apply bg-slate-50/70 dark:bg-slate-700/30;
+  }
+  .ty-fm-empty {
+    @apply px-4 py-10 text-center text-slate-400;
+  }
+  .ty-fm-name {
+    @apply text-slate-700 dark:text-slate-200;
+  }
+  .ty-fm-dir {
+    @apply text-brand-600 dark:text-brand-500 hover:underline cursor-pointer font-medium;
+  }
+  .ty-fm-ops {
+    @apply flex flex-wrap gap-1;
+  }
+  .ty-fm-op {
+    @apply px-1.5 py-0.5 rounded text-[11px] text-slate-500 dark:text-slate-400 hover:text-brand-500 hover:bg-brand-500/10 dark:hover:text-brand-500 transition-colors;
+  }
+  .ty-fm-op-danger {
+    @apply hover:text-rose-500 hover:bg-rose-500/10;
+  }
+  .ty-fm-foot {
+    @apply flex items-center gap-2 px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-[11px];
+  }
+}

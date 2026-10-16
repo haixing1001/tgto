@@ -1,0 +1,19 @@
+# 构建产物
+/web/dist/
+*.log
+*.db
+*.db-wal
+*.db-shm
+/Tgto
+/Tgto-*
+/data/
+/strm/
+/.idea/
+/.vscode/
+/Tgto.exe
+/Tgto.exe~
+/Tgto~
+*.exe
+*~
+web/node_modules/
+web/package-lock.json

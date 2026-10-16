@@ -1,0 +1,20 @@
+services:
+  tgto:
+    build: .
+    image: tgto:8.7.16
+    container_name: tgto
+    restart: unless-stopped
+    ports:
+      # 宿主机端口可通过 .env 的 TGTO_PORT 调整（默认 9058）
+      - "${TGTO_PORT:-9058}:9058"
+    environment:
+      # 登录账号（沿用原版 ENV 命名）
+      ENV_WEB_PASSPORT: ${TGTO_USER:-admin}
+      # 登录密码（生产环境务必通过 .env 修改，公网部署不要使用默认 123）
+      ENV_WEB_PASSWORD: ${TGTO_PASSWORD:-123}
+      # Go 运行时内存上限（VPS 可适当调大，如 128MiB）
+      GOMEMLIMIT: ${TGTO_MEMLIMIT:-64MiB}
+    volumes:
+      - ./db:/app/db        # SQLite 数据库（WAL 模式）
+      - ./strm:/app/strm    # STRM 文件树输出
+      - ./data:/app/data    # 本地媒体源 / 整理沙盒目录

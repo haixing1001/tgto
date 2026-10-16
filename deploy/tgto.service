@@ -1,0 +1,25 @@
+[Unit]
+Description=Tgto - 网盘媒体自动化管理平台（单二进制）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tgto
+Environment=PORT=9058
+Environment=ENV_WEB_PASSPORT=admin
+Environment=ENV_WEB_PASSWORD=__WEB_PASSWORD__
+Environment=TGTO_DB_DIR=/opt/tgto/db
+Environment=TGTO_STRM_DIR=/opt/tgto/strm
+Environment=TGTO_DATA_DIR=/opt/tgto/data
+Environment=GOMEMLIMIT=64MiB
+ExecStart=/opt/tgto/Tgto
+Restart=on-failure
+RestartSec=3
+# 单二进制低资源限制（可按 VPS 规格调整）
+MemoryMax=256M
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
