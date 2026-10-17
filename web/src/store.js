@@ -52,8 +52,40 @@ export async function login(username, password) {
   state.token = data.token
   state.username = data.username
   state.version = data.version
+  try { sessionStorage.setItem('tgto_username', data.username || '') } catch (e) {}
   await bootstrap()
   return data
+}
+
+// 刷新页面后恢复会话：token 存在 sessionStorage（api.js 管理），
+// 这里把它接回 state 并重新拉取一次全局状态；失效则回到登录页。
+export async function restoreSession() {
+  const saved = api.token
+  if (!saved) return false
+  state.token = saved
+  try {
+    await bootstrap()
+    try { state.username = sessionStorage.getItem('tgto_username') || '' } catch (e) {}
+    // 恢复会话后直接落到上次停留的视图（地址栏仍保持 /），避免先渲染成登录页
+    state.currentView = readLastView() || DEFAULT_VIEW
+    return true
+  } catch (e) {
+    api.setToken('')
+    state.token = ''
+    state.username = ''
+    state.currentView = 'login'
+    return false
+  }
+}
+
+// 会话失效（401）统一处理：清状态、清地址栏、回登录页
+export function handleUnauthorized() {
+  api.setToken('')
+  state.token = ''
+  state.username = ''
+  state.currentView = 'login'
+  try { sessionStorage.removeItem('tgto_last_view') } catch (e) {}
+  window.history.replaceState({ view: 'login' }, '', ROOT_PATH)
 }
 
 export function logout() {
@@ -62,7 +94,8 @@ export function logout() {
   state.token = ''
   state.username = ''
   state.currentView = 'login'
-  window.history.pushState({ view: 'login' }, '', '/login')
+  try { sessionStorage.removeItem('tgto_last_view') } catch (e) {}
+  window.history.replaceState({ view: 'login' }, '', ROOT_PATH)
 }
 
 export async function bootstrap() {
@@ -87,42 +120,79 @@ export async function refreshLogs(module = '') {
   return data
 }
 
-// ---------- 路由（History API 路径驱动，无 hash、无 vue-router） ----------
+// ---------- 视图切换（纯内存状态，地址栏始终保持站点根路径） ----------
+// 视图名不再写进 URL：无论点哪个菜单（含 /drive-guangya-account 这类网盘子菜单），
+// 地址栏都停在 /，靠 history.state + state.currentView 驱动，浏览器前进/后退仍可用。
+const ROOT_PATH = '/'
+const DEFAULT_VIEW = 'global-settings'
+
 const BASE_VIEWS = [
   'login', 'global-settings', 'log-center', 'transfer-history', 'organize-history', 'utility-tools',
   'media-discovery', 'trending', 'calendar', 'basic-config'
 ]
 
-// 网盘配置项已升入主导航：每个「网盘 × 子菜单」一个独立路由，由 driveDefs 生成
+// 网盘配置项已升入主导航：每个「网盘 × 子菜单」一个独立视图，由 driveDefs 生成
 const VIEWS = [...BASE_VIEWS, ...driveNavItems().map((d) => d.route)]
 
-// 从 location.pathname 提取视图名（/media-discovery -> media-discovery）
+// 从 location.pathname 提取视图名（/media-discovery -> media-discovery），仅用于兼容旧书签
 function viewFromPath() {
   const p = location.pathname.replace(/^\/+/, '').replace(/\/+$/, '')
   return p
 }
 
+// 地址栏收敛：把 /drive-guangya-account、/login 之类残留路径还原成 /
+function cleanAddressBar(view, replace = true) {
+  if (location.pathname === ROOT_PATH) return
+  const state_ = { view }
+  if (replace) window.history.replaceState(state_, '', ROOT_PATH)
+  else window.history.pushState(state_, '', ROOT_PATH)
+}
+
+// 上次停留的视图（刷新后仍回到原页面，但地址栏不暴露）
+function readLastView() {
+  try {
+    const v = sessionStorage.getItem('tgto_last_view')
+    return VIEWS.includes(v) ? v : ''
+  } catch (e) {
+    return ''
+  }
+}
+
+function saveLastView(view) {
+  try { sessionStorage.setItem('tgto_last_view', view) } catch (e) {}
+}
+
 export function navigate(view) {
-  if (!VIEWS.includes(view)) view = 'global-settings'
-  window.history.pushState({ view }, '', '/' + view)
+  if (!VIEWS.includes(view)) view = DEFAULT_VIEW
+  if (view === state.currentView) {
+    cleanAddressBar(view)
+    return
+  }
   state.currentView = view
+  saveLastView(view)
+  window.history.pushState({ view }, '', ROOT_PATH)
 }
 
 export function initRouter(onView) {
-  const sync = () => {
-    let view = viewFromPath()
-    // 兼容旧扁平路由（如 /drive-123）→ 重定向到对应网盘的第一个配置项
-    const legacy = resolveDriveRoute(view)
-    if (legacy && legacy !== view) {
-      window.history.replaceState({ view: legacy }, '', '/' + legacy)
-      view = legacy
-    }
-    const resolved = VIEWS.includes(view) ? view : (state.token ? 'global-settings' : 'login')
-    state.currentView = state.token ? resolved : 'login'
+  // 首次进入：优先沿用旧书签里的视图（兼容 /drive-115 扁平路由），其次用上次停留的视图
+  const incoming = viewFromPath()
+  const legacy = resolveDriveRoute(incoming) || incoming
+  const initial = VIEWS.includes(legacy) ? legacy : (readLastView() || DEFAULT_VIEW)
+
+  // 地址栏一律还原为 /，不再出现任何视图名
+  window.history.replaceState({ view: initial }, '', ROOT_PATH)
+  state.currentView = state.token ? initial : 'login'
+
+  window.addEventListener('popstate', (e) => {
+    const v = e && e.state && e.state.view
+    const next = VIEWS.includes(v) ? v : DEFAULT_VIEW
+    state.currentView = state.token ? next : 'login'
+    if (state.token) saveLastView(next)
+    cleanAddressBar(state.currentView)
     if (onView) onView(state.currentView)
-  }
-  window.addEventListener('popstate', sync)
-  sync()
+  })
+
+  if (onView) onView(state.currentView)
 }
 
 // ---------- 工具 ----------

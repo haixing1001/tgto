@@ -142,7 +142,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { state, navigate, logout, toggleTheme, toast, bootstrap, initRouter } from './store.js'
+import { state, navigate, logout, toggleTheme, toast, bootstrap, initRouter, restoreSession, handleUnauthorized } from './store.js'
 import ToastContainer from './components/ToastContainer.vue'
 import ModalDialog from './components/ModalDialog.vue'
 import LoginView from './views/LoginView.vue'
@@ -247,14 +247,23 @@ function toggleGroup(group) {
   if (group.collapsible) group.expanded = !group.expanded
 }
 
-onMounted(() => {
+let onUnauthorized = null
+
+onMounted(async () => {
+  // 先恢复会话（sessionStorage 里的 token），再初始化路由，
+  // 否则刷新页面会先被判定成未登录而弹回登录页。
+  await restoreSession()
   initRouter(applyAutoExpand)
   applyAutoExpand(state.currentView)
-  window.addEventListener('tgto:unauthorized', () => toast('warn', '登录状态', '会话已过期，请重新登录'))
+  onUnauthorized = () => {
+    handleUnauthorized()
+    toast('warn', '登录状态', '会话已过期，请重新登录')
+  }
+  window.addEventListener('tgto:unauthorized', onUnauthorized)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('tgto:unauthorized', () => {})
+  if (onUnauthorized) window.removeEventListener('tgto:unauthorized', onUnauthorized)
 })
 
 async function submitQuickTransfer() {
