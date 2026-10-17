@@ -35,7 +35,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import QRCode from 'qrcode'
 import { api } from '../api'
-import { toast } from '../store'
+import { toast, bootstrap } from '../store'
 
 // ---------------- 状态 ----------------
 
@@ -100,6 +100,8 @@ async function poll() {
       stopPoll()
       stopCountdown()
       await refreshStatus()
+      // 刷新全局状态：左侧菜单绿点依据 drive_status.tianyi.logged_in
+      await bootstrap()
     } else if (res.status === 'expired' || res.status === 'failed' || res.status === 'error' || res.status === 'idle') {
       stopPoll()
       stopCountdown()
@@ -188,6 +190,7 @@ async function clearLogin() {
     pollState.status = ''
     pollState.message = ''
     await refreshStatus()
+    await bootstrap()
   } catch (e) {
     toast('error', '清除失败', e.message)
   } finally {

@@ -56,8 +56,8 @@
                       <span>{{ dg.icon }} {{ dg.name }}</span>
                       <span
                         class="ml-auto w-2 h-2 rounded-full"
-                        :class="driveReady(dg.driveKey, state.config) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
-                        :title="driveReady(dg.driveKey, state.config) ? '账号已配置' : '账号未配置'"
+                        :class="driveReady(dg.driveKey, state.config, state.driveStatus) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
+                        :title="driveReady(dg.driveKey, state.config, state.driveStatus) ? '已登录/已配置' : '未登录/未配置'"
                       ></span>
                     </div>
                     <div v-show="expandedDrives[dg.driveKey]" class="pl-6">

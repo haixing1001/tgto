@@ -62,6 +62,11 @@ func (h *Handlers) handleState(c *gin.Context) {
 		"organize_history": organize,
 		"logs":            logs,
 		"server_time":     time.Now().Format(time.RFC3339),
+		// 各网盘真实可用状态：天翼是扫码会话（data/tianyi_session.json），
+		// 不能用账号/密码字段判断——扫码登录根本不写 password。
+		"drive_status": gin.H{
+			"tianyi": h.svc.TyStatus(),
+		},
 	})
 }
 

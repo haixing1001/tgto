@@ -15,6 +15,7 @@ export const state = reactive({
   theme: 'dark',
   firstRunBannerClosed: false,
   logAutoRefresh: false,
+  driveStatus: {},
   toasts: [],
   loading: {}
 })
@@ -101,6 +102,7 @@ export function logout() {
 export async function bootstrap() {
   const data = await api.get('/api/state')
   state.config = data.config || {}
+  state.driveStatus = data.drive_status || {}
   state.transferHistory = data.transfer_history || []
   state.organizeHistory = data.organize_history || []
   state.logs = data.logs || []

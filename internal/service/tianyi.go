@@ -78,23 +78,25 @@ type tySession struct {
 	RefreshToken  string `json:"refresh_token"`
 	KeepAlive     int    `json:"keep_alive"`
 	UpdatedAt     int64  `json:"updated_at"`
+	// Invalid 由保活循环在确认登录态失效时置位：前端据此把绿点转灰并提示重新扫码
+	Invalid bool `json:"invalid,omitempty"`
 }
 
 // tyQRSession 一次扫码流程的会话状态（内存态，进程内单例）。
 type tyQRSession struct {
-	client   *http.Client
-	lt       string
-	reqID    string
-	paramID  string
-	uuid     string // 裸 uuid（二维码内容）
+	client    *http.Client
+	lt        string
+	reqID     string
+	paramID   string
+	uuid      string // 裸 uuid（二维码内容）
 	encryuuid string
-	referer  string
-	created  time.Time
+	referer   string
+	created   time.Time
 }
 
 var (
-	tyMu       sync.Mutex
-	tyQR       *tyQRSession
+	tyMu sync.Mutex
+	tyQR *tyQRSession
 )
 
 // tyCookieClient 新建带独立 cookie jar 的 HTTP 客户端（15s 超时）。
@@ -419,11 +421,15 @@ func (s *Services) TyQRCancel() map[string]any {
 // TyStatus 返回天翼云盘扫码登录状态。
 func (s *Services) TyStatus() map[string]any {
 	sess, err := s.loadTySession()
-	if err != nil || sess == nil || sess.SessionKey == "" {
+	if err != nil || sess == nil || sess.SessionKey == "" || sess.Invalid {
 		tyMu.Lock()
 		inProgress := tyQR != nil
 		tyMu.Unlock()
-		return map[string]any{"logged_in": false, "status": "未登录，请点击「生成二维码」扫码登录", "in_progress": inProgress}
+		status := "未登录，请点击「生成二维码」扫码登录"
+		if sess != nil && sess.Invalid {
+			status = "登录已失效（保活刷新失败），请重新扫码登录"
+		}
+		return map[string]any{"logged_in": false, "status": status, "in_progress": inProgress}
 	}
 	cfg := s.GetConfig(DriveTianYi)
 	account, _ := cfg["account"].(string)
@@ -445,6 +451,8 @@ func (s *Services) TyClearLogin() (map[string]any, error) {
 	tyQR = nil
 	tyMu.Unlock()
 	_ = os.Remove(s.tySessionPath())
+	// 同步清掉配置里的账号名，避免「已清除登录但菜单仍是绿点/仍显示旧账号」
+	_, _ = s.SaveConfig(DriveTianYi, map[string]any{"account": ""})
 	return map[string]any{"logged_in": false, "status": "已清除天翼云盘登录信息"}, nil
 }
 

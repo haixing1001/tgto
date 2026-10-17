@@ -395,7 +395,7 @@ const DRIVE_CREDENTIALS = {
   cloud115: { keys: ['cookie'], mode: 'single' },
   cloud123: { keys: ['username', 'password'], mode: 'all' },
   guangya: { keys: ['phone'], mode: 'single' },
-  tianyi: { keys: ['account', 'password'], mode: 'all' }
+  tianyi: { keys: ['account'], mode: 'single' }
 }
 
 // 依据当前结构定义补齐每个子菜单的 route / driveKey / navKey 等扁平化字段
@@ -410,10 +410,15 @@ for (const [driveKey, def] of Object.entries(DRIVES)) {
   })
 }
 
-// 网盘账号是否已配置（就绪绿灯依据）：凭证字段非空
-export function driveReady(driveKey, config) {
+// 网盘是否「就绪」（左侧菜单绿点依据）：
+//   优先用后端 /api/state 返回的真实登录态 drive_status（天翼是扫码会话，
+//   登录只写 account、不写 password，用凭证字段判断永远不亮）；
+//   没有该字段时退回凭证配置判断（115 Cookie / 123 账号密码 / 光鸭手机号）。
+export function driveReady(driveKey, config, driveStatus) {
   const def = DRIVES[driveKey]
   if (!def) return false
+  const st = (driveStatus || {})[driveKey]
+  if (st && typeof st.logged_in === 'boolean') return st.logged_in
   const cfg = (config && config[driveKey]) || {}
   const keys = def.credentials.keys || []
   if (!keys.length) return false
