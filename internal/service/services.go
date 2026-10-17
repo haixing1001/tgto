@@ -19,7 +19,7 @@ import (
 
 // 网盘 key 常量。
 const (
-	Drive115    = "cloud115"
+	Drive139    = "cloud139"
 	Drive123    = "cloud123"
 	DriveGY     = "guangya"
 	DriveTianYi = "tianyi"
@@ -104,7 +104,7 @@ func (s *Services) AllConfigs() map[string]map[string]any {
 // applyRuntimeConfig 配置保存后同步运行时组件（限流器等）。
 func (s *Services) applyRuntimeConfig(section string, cfg map[string]any) {
 	switch section {
-	case Drive115, Drive123, DriveGY, DriveTianYi:
+	case Drive139, Drive123, DriveGY, DriveTianYi:
 		s.ConfigureLimiter(section, toFloat(cfg["qps"], 2), toFloat(cfg["burst"], 4))
 	}
 }

@@ -14,7 +14,7 @@
       >
         <span class="text-amber-500 text-base">💡</span>
         <span class="flex-1 text-amber-800 dark:text-amber-300">
-          请先前往 <b>系统工具 - 全局设置</b> 完成基础设置，然后配置 123 云盘账号、115 Cookie、天翼云盘账号或光鸭云盘账号。
+          请先前往 <b>系统工具 - 全局设置</b> 完成基础设置，然后配置 移动云盘账号、123 云盘账号、天翼云盘账号或光鸭云盘账号。
         </span>
         <button class="btn-primary" @click="navigate('drive-123-account')">去配置云盘</button>
         <button class="text-amber-500 hover:text-amber-700 px-1" @click="state.firstRunBannerClosed = true">✕</button>
@@ -117,7 +117,7 @@
     <ModalDialog v-model="quickModal" title="新建分享链接转存任务" width="560px">
       <div class="space-y-3">
         <div>
-          <label class="label">分享链接（支持 115 / 123云盘 / 光鸭云盘 / 天翼云盘）</label>
+          <label class="label">分享链接（支持 移动云盘 / 123云盘 / 光鸭云盘 / 天翼云盘）</label>
           <input v-model="quickForm.link" class="input" placeholder="https://123pan.com/s/xxxxxxx" />
         </div>
         <div>

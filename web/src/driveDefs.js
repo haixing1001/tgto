@@ -3,38 +3,41 @@
 // 页面仅渲染该子菜单下的折叠卡片，字段由 FieldRenderer 通用渲染。
 //
 // 路由模型（扁平化，子菜单升入主导航）：
-//   主导航 route   : drive-<drive>-<submenu>  例：drive-115-account
-//   旧路由（兼容） : drive-<drive>            例：drive-115 → 重定向到该网盘第一个子菜单
+//   主导航 route   : drive-<drive>-<submenu>  例：drive-139-account
+//   旧路由（兼容） : drive-<drive>            例：drive-139 → 重定向到该网盘第一个子菜单
 
 export const DRIVES = {
-  cloud115: {
-    key: 'cloud115',
-    route: 'drive-115',
-    name: '115网盘',
-    icon: '💠',
-    color: '#3b82f6',
+  cloud139: {
+    key: 'cloud139',
+    route: 'drive-139',
+    name: '移动云盘',
+    icon: '📱',
+    color: '#0085d0',
     submenus: [
       {
         key: 'account',
-        title: '115账号配置',
+        title: '移动云盘账号配置',
         cards: [
           {
             key: 'account',
-            title: '115账号配置',
+            title: '移动云盘账号配置',
+            desc: '中国移动云盘（139 / 和彩云）',
             fields: [
-              { key: 'cookie', label: '115 Cookie', type: 'password', placeholder: '粘贴浏览器 Cookie', span: 2 },
-              { key: 'cid', label: '默认目标目录 CID', type: 'text', placeholder: '0 表示根目录' }
-            ]
+              { key: 'username', label: '登录账号', type: 'text', placeholder: '手机号或 139 邮箱' },
+              { key: 'password', label: '登录密码', type: 'password' },
+              { key: 'authorization', label: '授权令牌（可选）', type: 'password', span: 2, placeholder: '粘贴浏览器请求头里的 Authorization，留空则用账号密码登录' }
+            ],
+            note: '优先使用「授权令牌」直连；未填令牌时按账号密码登录。令牌过期后到移动云盘网页版重新复制即可。'
           }
         ]
       },
       {
         key: 'monitor',
-        title: '115 频道监控配置',
+        title: '移动云盘频道监控配置',
         cards: [
           {
             key: 'monitor',
-            title: '115 频道监控配置',
+            title: '移动云盘频道监控配置',
             fields: [
               { key: 'monitor_channels', label: '监控频道', type: 'tags', placeholder: '@Channel1, @Channel2', span: 2 },
               { key: 'qps', label: 'API 限速 QPS', type: 'number' },
@@ -103,7 +106,7 @@ export const DRIVES = {
             fields: [
               { key: 'share_strm_enabled', label: '启用分享 STRM', type: 'switch' }
             ],
-            note: '分享 STRM 输出至 实用工具-115分享STRM失效检测 指定目录（默认 /app/strm/cloud115_share）。'
+            note: '分享 STRM 输出至 实用工具-移动云盘分享STRM失效检测 指定目录（默认 /app/strm/cloud139_share）。'
           }
         ]
       }
@@ -385,14 +388,14 @@ export const DRIVES = {
   }
 }
 
-const DRIVE_PREFIX = { cloud115: 'drive-115', cloud123: 'drive-123', guangya: 'drive-guangya', tianyi: 'drive-tianyi' }
+const DRIVE_PREFIX = { cloud139: 'drive-139', cloud123: 'drive-123', guangya: 'drive-guangya', tianyi: 'drive-tianyi' }
 const PREFIX_DRIVE = Object.fromEntries(Object.entries(DRIVE_PREFIX).map(([d, p]) => [p, d]))
 
 // 每个网盘的账号凭证字段：用于主导航条目的「就绪绿灯」判定
 //   - single：任一字段非空即视为已配置
 //   - all：所有字段均非空才视为已配置
 const DRIVE_CREDENTIALS = {
-  cloud115: { keys: ['cookie'], mode: 'single' },
+  cloud139: { keys: ['username', 'password'], mode: 'all', alt: ['authorization'] },
   cloud123: { keys: ['username', 'password'], mode: 'all' },
   guangya: { keys: ['phone'], mode: 'single' },
   tianyi: { keys: ['account'], mode: 'single' }
@@ -411,15 +414,17 @@ for (const [driveKey, def] of Object.entries(DRIVES)) {
 }
 
 // 网盘是否「就绪」（左侧菜单绿点依据）：
+//   alt 为「替代凭证」：任一非空即视为已配置（移动云盘可用令牌单独登录）；
 //   优先用后端 /api/state 返回的真实登录态 drive_status（天翼是扫码会话，
 //   登录只写 account、不写 password，用凭证字段判断永远不亮）；
-//   没有该字段时退回凭证配置判断（115 Cookie / 123 账号密码 / 光鸭手机号）。
+//   没有该字段时退回凭证配置判断（移动云盘账号密码 / 123 账号密码 / 光鸭手机号）。
 export function driveReady(driveKey, config, driveStatus) {
   const def = DRIVES[driveKey]
   if (!def) return false
   const st = (driveStatus || {})[driveKey]
   if (st && typeof st.logged_in === 'boolean') return st.logged_in
   const cfg = (config && config[driveKey]) || {}
+  if ((def.credentials.alt || []).some((k) => !!cfg[k])) return true
   const keys = def.credentials.keys || []
   if (!keys.length) return false
   const filled = keys.filter((k) => !!cfg[k])
@@ -458,7 +463,7 @@ export function driveFromRoute(view) {
     if (view === def.navKey) return def.driveKey
     if (view.startsWith(def.navKey + '-')) return def.driveKey
   }
-  return 'cloud115'
+  return 'cloud139'
 }
 
 // 当前 route -> 子菜单 key；旧扁平路由回落到该网盘的第一个子菜单

@@ -62,7 +62,8 @@ type OrganizeRow struct {
 
 // DriveNames 网盘 key -> 中文展示名。
 var DriveNames = map[string]string{
-	"cloud115":  "115网盘",
+	"cloud139":  "移动云盘",
+	"cloud115":  "115网盘（历史数据）",
 	"cloud123":  "123云盘",
 	"guangya":   "光鸭云盘",
 	"tianyi":    "天翼云盘",
@@ -179,22 +180,23 @@ func DefaultConfigs() map[string]map[string]any {
 			"monitor_interval":    5,
 			"metadata_language":   "zh-CN",
 		},
-		"cloud115": {
-			"cookie":           "",
-			"cid":              "0",
-			"monitor_channels": "",
-			"organize_enabled": true,
-			"movie_dir":        "/媒体库/电影",
-			"tv_dir":           "/媒体库/剧集",
-			"music_dir":        "/媒体库/无损音乐",
-			"local_organize_dir": "/app/data/organize/cloud115",
-			"local_media_dir":    "/app/data/media/cloud115",
-			"strm_enabled":     true,
-			"strm_dir":         "/app/strm/cloud115",
-			"strm_url_prefix":  "http://127.0.0.1:9058/media/cloud115",
+		"cloud139": {
+			"username":          "",
+			"password":          "",
+			"authorization":     "",
+			"monitor_channels":  "",
+			"organize_enabled":  true,
+			"movie_dir":         "/媒体库/电影",
+			"tv_dir":            "/媒体库/剧集",
+			"music_dir":         "/媒体库/无损音乐",
+			"local_organize_dir": "/app/data/organize/cloud139",
+			"local_media_dir":    "/app/data/media/cloud139",
+			"strm_enabled":      true,
+			"strm_dir":          "/app/strm/cloud139",
+			"strm_url_prefix":   "http://127.0.0.1:9058/media/cloud139",
 			"share_strm_enabled": false,
-			"qps":               2,
-			"burst":             4,
+			"qps":                2,
+			"burst":              4,
 		},
 		"cloud123": {
 			"username":          "",
@@ -254,7 +256,7 @@ func DefaultConfigs() map[string]map[string]any {
 			"tmdb_api_base":   "https://api.themoviedb.org",
 			"tmdb_image_base": "https://image.tmdb.org",
 			"regex_rules":     []any{},
-			"share_strm_path": "/app/strm/cloud115_share",
+			"share_strm_path": "/app/strm/cloud139_share",
 		},
 		"basic_config": {
 			"douban_tiers":      []any{"热门电影", "豆瓣电影Top250", "华语佳片", "冷门佳作"},
@@ -274,7 +276,7 @@ func DefaultConfigs() map[string]map[string]any {
 				"繁花.2023.S01E02.1080p.WEB-DL.H264.AAC-HDS.mkv",
 				"陈奕迅.-.Rice.And.Shine.2014.FLAC/05.娱乐天空.flac",
 			},
-			"cloud115": []any{
+			"cloud139": []any{
 				"漫长的季节.2023.S01E04.2160p.WEB-DL.DDP5.1.Atmos.H.265-HHWEB.mkv",
 				"周杰伦.-.叶惠美.2003.FLAC/03.晴天.flac",
 				"幕府将军.2024.S01E01.1080p.AMZN.WEB-DL.DDP5.1.H.264-FRDS.mkv",
@@ -306,8 +308,8 @@ func (d *DB) seed() error {
 		seeds := []TransferRow{
 			{Drive: "cloud123", Channel: "@MovieHeaven", ShareLink: "https://123pan.com/s/a1B2c3D4", Code: "8x7k", TargetDir: "/0/媒体库/剧集", Status: "成功", Message: "转存成功，共 24 个文件", Result: "已入库"},
 			{Drive: "cloud123", Channel: "@AniShare", ShareLink: "https://123pan.com/s/e5F6g7H8", Code: "2m9p", TargetDir: "/0/媒体库/动漫", Status: "成功", Message: "转存成功，共 12 个文件", Result: "已入库"},
-			{Drive: "cloud115", Channel: "@PTShare", ShareLink: "https://share.115.com/s/sw2mno9p", Code: "", TargetDir: "/媒体库/电影", Status: "成功", Message: "秒传命中，0 秒入库", Result: "已入库"},
-			{Drive: "cloud115", Channel: "@LosslessMusic", ShareLink: "https://share.115.com/s/sw3abc4d", Code: "k5tt", TargetDir: "/媒体库/无损音乐", Status: "成功", Message: "转存成功，共 1 个目录", Result: "已入库"},
+			{Drive: "cloud139", Channel: "@PTShare", ShareLink: "https://yun.139.com/shareweb/#/w/i/2qieM8ZkLpQ", Code: "", TargetDir: "/媒体库/电影", Status: "成功", Message: "转存成功，共 3 个文件", Result: "已入库"},
+			{Drive: "cloud139", Channel: "@LosslessMusic", ShareLink: "https://yun.139.com/shareweb/#/w/i/2qieN5tRbVc", Code: "k5tt", TargetDir: "/媒体库/无损音乐", Status: "成功", Message: "转存成功，共 1 个目录", Result: "已入库"},
 			{Drive: "guangya", Channel: "@GygdShare", ShareLink: "https://guangya.com/s/gy7k9m2x", Code: "gg22", TargetDir: "/媒体库/转存", Status: "跳过", Message: "分享链接已存在于监控历史，执行去重跳过", Result: "已去重"},
 			{Drive: "tianyi", Channel: "@Cloud189", ShareLink: "https://cloud.189.cn/t/eyR3mN7A", Code: "6f2q", TargetDir: "/媒体库/剧集", Status: "失败", Message: "天翼云盘分享已过期（code: ShareExpired）", Result: "链接失效"},
 		}
@@ -326,9 +328,9 @@ func (d *DB) seed() error {
 			{Drive: "cloud123", Kind: "music", OriginalName: "Jay.Chou.-.Fantasy.2001.FLAC/02.简单爱.flac", TargetName: "02 - Jay Chou - 简单爱.flac", TargetPath: "/0/媒体库/无损音乐/Jay Chou - Fantasy (2001) [FLAC]/02 - Jay Chou - 简单爱.flac", MBID: "b8c2f6a1-3d4e-4f5a-9b6c-7d8e9f0a1b2c", Status: "成功"},
 			{Drive: "guangya", Kind: "movie", OriginalName: "繁花.2023.S01E02.1080p.WEB-DL.H264.AAC-HDS.mkv", TargetName: "繁华 (2023) - S01E02 - 1080p WEB-DL H264.mkv", TargetPath: "/媒体库/剧集/繁华 (2023) [tmdbid=225372]/Season 01/繁华 (2023) - S01E02 - 1080p WEB-DL H264.mkv", TMDBID: "225372", Status: "成功"},
 			{Drive: "guangya", Kind: "music", OriginalName: "陈奕迅.-.Rice.And.Shine.2014.FLAC/05.娱乐天空.flac", TargetName: "05 - 陈奕迅 - 娱乐天空.flac", TargetPath: "/媒体库/无损音乐/陈奕迅 - Rice And Shine (2014) [FLAC]/05 - 陈奕迅 - 娱乐天空.flac", MBID: "c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f", Status: "成功"},
-			{Drive: "cloud115", Kind: "movie", OriginalName: "漫长的季节.2023.S01E04.2160p.WEB-DL.DDP5.1.Atmos.H.265-HHWEB.mkv", TargetName: "漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TargetPath: "/媒体库/剧集/漫长的季节 (2023) [tmdbid=225372]/Season 01/漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TMDBID: "225372", Status: "成功"},
-			{Drive: "cloud115", Kind: "music", OriginalName: "周杰伦.-.叶惠美.2003.FLAC/03.晴天.flac", TargetName: "03 - 周杰伦 - 晴天.flac", TargetPath: "/媒体库/无损音乐/周杰伦 - 叶惠美 (2003) [FLAC]/03 - 周杰伦 - 晴天.flac", MBID: "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70", Status: "成功"},
-			{Drive: "cloud115", Kind: "share", OriginalName: "幕府将军.2024.S01E01.1080p.AMZN.WEB-DL.DDP5.1.H.264-FRDS.mkv", TargetName: "幕府将军 (2024) - S01E01 - 1080p WEB-DL H264.strm", TargetPath: "/app/strm/cloud115_share/幕府将军 (2024) [tmdbid=126308]/Season 01/幕府将军 (2024) - S01E01.strm", TMDBID: "126308", Status: "已回退"},
+			{Drive: "cloud139", Kind: "movie", OriginalName: "漫长的季节.2023.S01E04.2160p.WEB-DL.DDP5.1.Atmos.H.265-HHWEB.mkv", TargetName: "漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TargetPath: "/媒体库/剧集/漫长的季节 (2023) [tmdbid=225372]/Season 01/漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TMDBID: "225372", Status: "成功"},
+			{Drive: "cloud139", Kind: "music", OriginalName: "周杰伦.-.叶惠美.2003.FLAC/03.晴天.flac", TargetName: "03 - 周杰伦 - 晴天.flac", TargetPath: "/媒体库/无损音乐/周杰伦 - 叶惠美 (2003) [FLAC]/03 - 周杰伦 - 晴天.flac", MBID: "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70", Status: "成功"},
+			{Drive: "cloud139", Kind: "share", OriginalName: "幕府将军.2024.S01E01.1080p.AMZN.WEB-DL.DDP5.1.H.264-FRDS.mkv", TargetName: "幕府将军 (2024) - S01E01 - 1080p WEB-DL H264.strm", TargetPath: "/app/strm/cloud139_share/幕府将军 (2024) [tmdbid=126308]/Season 01/幕府将军 (2024) - S01E01.strm", TMDBID: "126308", Status: "已回退"},
 		}
 		for i := range seeds {
 			seeds[i].CreatedAt = now.Add(-time.Duration(len(seeds)-i) * 53 * time.Minute).Format(time.RFC3339)

@@ -16,7 +16,7 @@ import (
 
 // STRMRequest STRM 生成请求。
 type STRMRequest struct {
-	DriveType string `json:"drive_type"` // cloud115 / cloud123 / guangya
+	DriveType string `json:"drive_type"` // cloud139 / cloud123 / guangya
 	Mode      string `json:"mode"`       // incremental / full
 }
 
@@ -47,8 +47,8 @@ func (s *Services) GenerateSTRM(ctx context.Context, req STRMRequest) (*STRMResu
 	if mode == "" {
 		mode = "incremental"
 	}
-	if drive != Drive115 && drive != Drive123 && drive != DriveGY {
-		return nil, fmt.Errorf("不支持的网盘类型: %s（支持 cloud115 / cloud123 / guangya）", drive)
+	if drive != Drive139 && drive != Drive123 && drive != DriveGY {
+		return nil, fmt.Errorf("不支持的网盘类型: %s（支持 cloud139 / cloud123 / guangya）", drive)
 	}
 
 	cfg := s.GetConfig(drive)
@@ -223,10 +223,10 @@ func copySidecar(src, dst string) bool {
 	return true
 }
 
-// CheckShareSTRM 校验 115 分享 STRM 目录下 .strm 文件对应链接的存活状态。
+// CheckShareSTRM 校验移动云盘分享 STRM 目录下 .strm 文件对应链接的存活状态。
 func (s *Services) CheckShareSTRM() (map[string]any, error) {
 	tools := s.GetConfig("tools")
-	dir := orDefault(toString(tools["share_strm_path"]), filepath.Join(s.STRMRoot, "cloud115_share"))
+	dir := orDefault(toString(tools["share_strm_path"]), filepath.Join(s.STRMRoot, "cloud139_share"))
 
 	entries := []string{}
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -261,7 +261,7 @@ func (s *Services) CheckShareSTRM() (map[string]any, error) {
 			"status": map[bool]string{true: "存活", false: "失效"}[ok],
 		})
 	}
-	s.Log.Info(logger.ModSTRM, "115 分享 STRM 失效检测完成：存活 %d，失效 %d（目录 %s）", alive, dead, dir)
+	s.Log.Info(logger.ModSTRM, "移动云盘分享 STRM 失效检测完成：存活 %d，失效 %d（目录 %s）", alive, dead, dir)
 	return map[string]any{
 		"dir":    dir,
 		"total":  len(entries),
@@ -279,8 +279,8 @@ func isPosterFile(rel string) bool {
 
 func driveDisplayName(drive string) string {
 	switch drive {
-	case Drive115:
-		return "115网盘"
+	case Drive139:
+		return "移动云盘"
 	case Drive123:
 		return "123云盘"
 	case DriveGY:

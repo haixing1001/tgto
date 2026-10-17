@@ -82,7 +82,7 @@ import { fmtTime, statusBadgeClass } from '../store.js'
 import { api } from '../api.js'
 
 const tabs = [
-  { key: 'cloud115', label: '115 网盘' },
+  { key: 'cloud139', label: '移动云盘' },
   { key: 'cloud123', label: '123 云盘' },
   { key: 'guangya', label: '光鸭云盘' },
   { key: 'tianyi', label: '天翼云盘' }

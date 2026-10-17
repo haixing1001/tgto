@@ -25,8 +25,9 @@ check('无 drive_status 且无账号 → 不亮',
   driveReady('tianyi', { tianyi: {} }) === false)
 
 // 其它网盘保持原有凭证判定
-check('115 有 Cookie → 绿点', driveReady('cloud115', { cloud115: { cookie: 'UID=1' } }) === true)
-check('115 无 Cookie → 不亮', driveReady('cloud115', { cloud115: { cookie: '' } }) === false)
+check('移动云盘账号+密码齐全 → 绿点', driveReady('cloud139', { cloud139: { username: '13800138000', password: 'p' } }) === true)
+check('移动云盘只有账号 → 不亮', driveReady('cloud139', { cloud139: { username: '13800138000', password: '' } }) === false)
+check('移动云盘仅授权令牌 → 绿点', driveReady('cloud139', { cloud139: { authorization: 'tok' } }) === true)
 check('123 账号+密码齐全 → 绿点', driveReady('cloud123', { cloud123: { username: 'u', password: 'p' } }) === true)
 check('123 只有账号 → 不亮', driveReady('cloud123', { cloud123: { username: 'u', password: '' } }) === false)
 check('光鸭有手机号 → 绿点', driveReady('guangya', { guangya: { phone: '13800000000' } }) === true)

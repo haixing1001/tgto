@@ -25,7 +25,7 @@
         </form>
 
         <div class="mt-5 text-center text-[10px] text-slate-400 leading-relaxed">
-          115 / 123云盘 / 光鸭云盘 / 天翼云盘 · TG 频道监控转存<br />
+          移动云盘 / 123云盘 / 光鸭云盘 / 天翼云盘 · TG 频道监控转存<br />
           TMDB / MusicBrainz 刮削整理 · 全量与增量 STRM
         </div>
       </div>

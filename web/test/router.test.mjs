@@ -75,17 +75,17 @@ initRouter()
 check('旧深链视图被识别', state.currentView === 'drive-guangya-account', state.currentView)
 check('旧深链地址栏收敛为 /', location.pathname === '/', location.pathname)
 
-navigate('drive-115-account')
-check('切换到网盘子菜单', state.currentView === 'drive-115-account', state.currentView)
+navigate('drive-139-account')
+check('切换到网盘子菜单', state.currentView === 'drive-139-account', state.currentView)
 check('网盘子菜单地址栏为 /', location.pathname === '/', location.pathname)
 
 navigate('trending')
 check('切换普通页地址栏为 /', location.pathname === '/', location.pathname)
 
-entries.push({ state: { view: 'drive-115-account' }, url: '/' })
+entries.push({ state: { view: 'drive-139-account' }, url: '/' })
 idx++
-for (const fn of listeners.popstate || []) fn({ state: { view: 'drive-115-account' } })
-check('popstate 后退切回上一视图', state.currentView === 'drive-115-account', state.currentView)
+for (const fn of listeners.popstate || []) fn({ state: { view: 'drive-139-account' } })
+check('popstate 后退切回上一视图', state.currentView === 'drive-139-account', state.currentView)
 check('popstate 后地址栏仍为 /', location.pathname === '/', location.pathname)
 
 logout()

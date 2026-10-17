@@ -146,9 +146,9 @@ const tabs = [
   { key: 'cloud123-music', label: '123云盘音乐', drive: 'cloud123', kind: 'music', music: true },
   { key: 'guangya', label: '光鸭云盘', drive: 'guangya', kind: '', music: false },
   { key: 'guangya-music', label: '光鸭云盘音乐', drive: 'guangya', kind: 'music', music: true },
-  { key: 'cloud115', label: '115网盘', drive: 'cloud115', kind: '', music: false },
-  { key: 'cloud115-music', label: '115网盘音乐', drive: 'cloud115', kind: 'music', music: true },
-  { key: 'cloud115-share', label: '115网盘分享', drive: 'cloud115', kind: 'share', music: false }
+  { key: 'cloud139', label: '移动云盘', drive: 'cloud139', kind: '', music: false },
+  { key: 'cloud139-music', label: '移动云盘音乐', drive: 'cloud139', kind: 'music', music: true },
+  { key: 'cloud139-share', label: '移动云盘分享', drive: 'cloud139', kind: 'share', music: false }
 ]
 
 const activeTab = ref('cloud123')

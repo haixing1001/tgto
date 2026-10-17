@@ -17,19 +17,21 @@ type ShareLink struct {
 	Raw      string `json:"raw"`
 	URL      string `json:"url"`
 	Code     string `json:"code"`
-	Drive    string `json:"drive"` // cloud115 / cloud123 / guangya / tianyi
+	Drive    string `json:"drive"` // cloud139 / cloud123 / guangya / tianyi
 	ShareID  string `json:"share_id"`
 	Host     string `json:"host"`
 }
 
 // 常见链接写法：域名/s/xxxxx、域名/s/xxxxx#提取码、链接 + 空格 + 提取码
 var (
-	rePan115   = regexp.MustCompile(`(?i)(115\.com|115cdn\.com|share\.115)`)
+	rePan139   = regexp.MustCompile(`(?i)(yun\.139\.com|caiyun\.139\.com|139\.com)`)
 	rePan123   = regexp.MustCompile(`(?i)(123pan\.com|123\.com|123pan)`)
 	rePanGY    = regexp.MustCompile(`(?i)(guangya|gygd|guanying)`)
 	rePanTY    = regexp.MustCompile(`(?i)(cloud\.189\.cn|189\.cn|tianyi)`)
 	reAnyURL   = regexp.MustCompile(`https?://[^\s"'<>]+`)
-	reShareID  = regexp.MustCompile(`(?i)/s/([A-Za-z0-9_-]+)`)
+	reShareID  = regexp.MustCompile(`(?i)/(?:s|t)/([A-Za-z0-9_-]+)`)
+	// 移动云盘分享：yun.139.com/shareweb/#/w/i/<linkID>、/w/i/<linkID>、?linkID=<id>
+	reShareID139 = regexp.MustCompile(`(?i)(?:/w/i/|linkid=)([A-Za-z0-9_-]{4,})`)
 )
 
 // ParseShareLink 识别四大网盘分享链接并提取分享 ID 与提取码。
@@ -39,18 +41,20 @@ func ParseShareLink(raw string) (*ShareLink, error) {
 		return nil, fmt.Errorf("分享链接不能为空")
 	}
 
-	// 兼容 "链接 提取码" / "链接#提取码" / "链接+提取码" 三种写法
+	// 兼容 "链接 提取码" / "链接#提取码" / "链接+提取码" 三种写法。
+	// 注意顺序：先按 URL 切分，再考虑 '#'——移动云盘的分享 ID 就写在 #/w/i/xxx 里，
+	// 若先按 '#' 切分会把整段路由当成提取码。
 	code := ""
 	linkPart := input
-	if idx := strings.IndexAny(input, "#＃"); idx >= 0 {
-		code = strings.TrimSpace(input[idx+1:])
-		linkPart = input[:idx]
-	} else if m := reAnyURL.FindString(input); m != "" {
-		rest := strings.TrimSpace(input[len(m):])
+	if m := reAnyURL.FindString(input); m != "" {
+		rest := strings.TrimSpace(strings.TrimPrefix(input, m))
 		if rest != "" {
-			code = strings.TrimSpace(strings.TrimLeft(rest, " +-＋－提取码:："))
+			code = strings.TrimSpace(strings.TrimLeft(rest, " +-＋－提取码:：#＃"))
 		}
 		linkPart = m
+	} else if idx := strings.IndexAny(input, "#＃"); idx >= 0 {
+		code = strings.TrimSpace(input[idx+1:])
+		linkPart = input[:idx]
 	}
 
 	linkPart = strings.TrimSpace(linkPart)
@@ -68,7 +72,8 @@ func ParseShareLink(raw string) (*ShareLink, error) {
 	if q := parsed.Query().Get("code"); q != "" && code == "" {
 		code = q
 	}
-	if frag := parsed.Fragment; frag != "" && code == "" {
+	// 注意：移动云盘把分享 ID 放在 fragment（#/w/i/xxx），不能当成提取码
+	if frag := parsed.Fragment; frag != "" && code == "" && !strings.Contains(frag, "/") && len(frag) <= 16 {
 		code = frag
 	}
 	link.Code = code
@@ -77,11 +82,21 @@ func ParseShareLink(raw string) (*ShareLink, error) {
 	if m := reShareID.FindStringSubmatch(parsed.Path); m != nil {
 		shareID = m[1]
 	}
+	if shareID == "" {
+		// 移动云盘：分享 ID 可能在 fragment 或 linkID 查询参数里
+		if m := reShareID139.FindStringSubmatch(parsed.Fragment); m != nil {
+			shareID = m[1]
+		} else if id := parsed.Query().Get("linkID"); id != "" {
+			shareID = id
+		} else if m := reShareID139.FindStringSubmatch(parsed.String()); m != nil {
+			shareID = m[1]
+		}
+	}
 	link.ShareID = shareID
 
 	switch {
-	case rePan115.MatchString(host):
-		link.Drive = Drive115
+	case rePan139.MatchString(host):
+		link.Drive = Drive139
 	case rePan123.MatchString(host):
 		link.Drive = Drive123
 	case rePanGY.MatchString(host):
@@ -89,7 +104,7 @@ func ParseShareLink(raw string) (*ShareLink, error) {
 	case rePanTY.MatchString(host):
 		link.Drive = DriveTianYi
 	default:
-		return nil, fmt.Errorf("无法识别网盘类型（支持 115 / 123云盘 / 光鸭云盘 / 天翼云盘）: %s", host)
+		return nil, fmt.Errorf("无法识别网盘类型（支持 移动云盘 / 123云盘 / 光鸭云盘 / 天翼云盘）: %s", host)
 	}
 	if shareID == "" {
 		return nil, fmt.Errorf("链接中未找到分享 ID: %s", parsed.String())

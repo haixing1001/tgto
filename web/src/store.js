@@ -176,7 +176,7 @@ export function navigate(view) {
 }
 
 export function initRouter(onView) {
-  // 首次进入：优先沿用旧书签里的视图（兼容 /drive-115 扁平路由），其次用上次停留的视图
+  // 首次进入：优先沿用旧书签里的视图（兼容 /drive-139 扁平路由），其次用上次停留的视图
   const incoming = viewFromPath()
   const legacy = resolveDriveRoute(incoming) || incoming
   const initial = VIEWS.includes(legacy) ? legacy : (readLastView() || DEFAULT_VIEW)

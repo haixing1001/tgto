@@ -42,7 +42,7 @@ import { nextTick, onUnmounted, ref } from 'vue'
 import { state, refreshLogs, toast, fmtTime } from '../store.js'
 import { api } from '../api.js'
 
-const modules = ['System', 'Scheduler', 'Cloud115', 'Cloud123', 'CloudGuangYa', 'Tianyi', 'Organizer', 'STRM', 'Transfer', 'Config', 'API', 'Meta']
+const modules = ['System', 'Scheduler', 'Cloud139', 'Cloud123', 'CloudGuangYa', 'Tianyi', 'Organizer', 'STRM', 'Transfer', 'Config', 'API', 'Meta']
 const module = ref('ALL')
 const autoRefresh = ref(true)
 const consoleBox = ref(null)

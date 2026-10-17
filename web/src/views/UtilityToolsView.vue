@@ -89,10 +89,10 @@
         </div>
       </div>
 
-      <!-- 7. 115 分享 STRM 失效检测 -->
+      <!-- 7. 移动云盘分享 STRM 失效检测 -->
       <div class="card p-5 flex flex-col md:col-span-2 xl:col-span-1">
         <div>
-          <h3 class="text-sm font-semibold">🔎 115 分享 STRM 失效检测</h3>
+          <h3 class="text-sm font-semibold">🔎 移动云盘分享 STRM 失效检测</h3>
           <p class="text-xs text-slate-400 mt-1">扫描分享 STRM 目录并校验链接存活状态</p>
         </div>
         <div class="mt-3 flex-1">
@@ -129,7 +129,7 @@ const tools = reactive({
   custom_groups: '',
   tmdb_api_base: 'https://api.themoviedb.org',
   tmdb_image_base: 'https://image.tmdb.org',
-  share_strm_path: '/app/strm/cloud115_share'
+  share_strm_path: '/app/strm/cloud139_share'
 })
 const rulesText = ref('')
 const limiter = reactive({ qps: 2, burst: 4 })
