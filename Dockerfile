@@ -11,6 +11,9 @@ RUN npm run build
 
 # ---------- 第二阶段：编译 Go 单二进制（无 CGO） ----------
 FROM golang:1.26-alpine AS go-builder
+# 多架构构建：TARGETARCH 属于预定义全局 ARG，必须在阶段内重新声明才能使用，
+# 否则 GOARCH 为空、arm64 构建会静默产出 amd64 二进制。
+ARG TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
