@@ -20,8 +20,12 @@ RUN go mod download
 COPY . .
 COPY --from=web-builder /web/dist ./web/dist
 # 递增补丁版本号（0.0.1 -> 0.0.2 -> ...），main.go 经 go:embed 读取 VERSION
+# 注意：基础镜像的 /bin/sh 是 busybox ash，不支持 bash 的 <<< here-string，
+# 这里只能用 POSIX 参数展开解析版本号。
 RUN v="$(tr -d '[:space:]' < VERSION)"; [ -z "$v" ] && v="0.0.0"; \
-    IFS=. read -r ma mi pa <<<"$v"; echo "${ma}.${mi}.$((pa+1))" > VERSION
+    ma="${v%%.*}"; rest="${v#*.}"; mi="${rest%%.*}"; pa="${rest#*.}"; \
+    [ "$pa" = "$rest" ] && pa=0; \
+    echo "${ma}.${mi}.$((pa+1))" > VERSION
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /tgto-bin .
 
