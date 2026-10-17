@@ -159,6 +159,9 @@ func main() {
 	// 光鸭 Token 定时自动刷新
 	svc.StartGyTokenRefresh(ctx)
 
+	// 天翼云盘会话保活（SessionKey 续期，失败自动刷新会话）
+	svc.StartTyKeepAlive(ctx)
+
 	go func() {
 		ring.Info(logger.ModSystem, "HTTP 服务已监听 :%s（数据目录 %s）", cfg.Port, filepath.Clean(cfg.DBDir))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

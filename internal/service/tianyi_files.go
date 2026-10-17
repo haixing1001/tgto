@@ -97,7 +97,7 @@ func tySignatureHeaders(sess *tySession, method, fullURL, params string) map[str
 // 注意：天翼业务 API 的 GET 请求参数不加密，直接放 query string；
 // 签名数据格式为 SessionKey=<sk>&Operate=GET&RequestURI=<path>&Date=<gmt>（无 params 段）。
 func (s *Services) tyBusinessGet(ctx context.Context, sess *tySession, path string, params map[string]string) (map[string]any, error) {
-	fullURL := tyAPIURL + path
+	fullURL := tyAPIBase + path
 	query := tyClientSuffix()
 	if len(params) > 0 {
 		raw := url.Values{}
@@ -131,7 +131,7 @@ func (s *Services) tyBusinessGet(ctx context.Context, sess *tySession, path stri
 
 // tyBusinessPostForm POST 表单接口（参数明传，签名 params 段为空）。
 func (s *Services) tyBusinessPostForm(ctx context.Context, sess *tySession, path string, form url.Values) (map[string]any, error) {
-	fullURL := tyAPIURL + path
+	fullURL := tyAPIBase + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, stringsReader(form.Encode()))
 	if err != nil {
 		return nil, err
