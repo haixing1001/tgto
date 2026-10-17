@@ -128,7 +128,7 @@ func main() {
 	}()
 
 	svc := service.NewServices(database, ring, cfg.DataDir, cfg.STRMRoot, cfg.Version)
-	svc.ConfigureLimiter(service.Drive115, 2, 4)
+	svc.ConfigureLimiter(service.Drive139, 2, 4)
 	svc.ConfigureLimiter(service.Drive123, 2, 4)
 	svc.ConfigureLimiter(service.DriveGY, 2, 4)
 	svc.ConfigureLimiter(service.DriveTianYi, 2, 4)
