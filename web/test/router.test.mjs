@@ -50,7 +50,8 @@ globalThis.fetch = async () => ({
       config: { ui: { theme: 'dark' } },
       transfer_history: [],
       organize_history: [],
-      logs: []
+      logs: [],
+      drive_status: { tianyi: { logged_in: true, account: '18912345678' } }
     }
   })
 })
@@ -67,6 +68,7 @@ check('无会话时进入登录页', state.currentView === 'login', state.curren
 const ok = await restoreSession()
 check('restoreSession 恢复会话', ok === true && state.token === 'tok-restored', `ok=${ok} token=${state.token}`)
 check('恢复后不再停在登录页', state.currentView !== 'login', state.currentView)
+check('bootstrap 写入 driveStatus', state.driveStatus?.tianyi?.logged_in === true, JSON.stringify(state.driveStatus))
 
 location.pathname = '/drive-guangya-account'
 initRouter()
