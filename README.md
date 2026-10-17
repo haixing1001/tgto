@@ -13,12 +13,27 @@
 
 ### Docker Compose（推荐）
 
+镜像由 GitHub Actions 在每次推送 `main` 时自动构建并推送到 GHCR（`linux/amd64` + `linux/arm64` 多架构），客户端只需拉取，**无需源码、无需本地编译**：
+
 ```bash
+# 只需 compose 文件 + 三个数据目录
+mkdir -p tgto && cd tgto
+curl -fsSLO https://raw.githubusercontent.com/haixing1001/tgto/main/docker-compose.yml
 docker compose up -d
 # 访问 http://<NAS-IP>:9058 ，默认账号 admin / 密码 123
 ```
 
-镜像多阶段构建：`node:20-alpine` 构建前端 → `golang:1.26-alpine`（`CGO_ENABLED=0` + `-ldflags="-s -w"`）编译静态二进制 → `alpine:3.20` 极简运行时。支持 `linux/amd64` 与 `linux/arm64`（`docker buildx build --platform linux/amd64,linux/arm64`）。
+镜像 `ghcr.io/haixing1001/tgto:latest` 为公开包，可直接匿名拉取。固定版本用 `.env` 的 `TGTO_IMAGE=ghcr.io/haixing1001/tgto:sha-xxxxxxxx`（每次构建同时产出 `latest` / `main` / `sha-xxxxxxx` / semver 标签）。
+
+**升级**：`docker compose pull && docker compose up -d`（compose 已设 `pull_policy: always`，直接 `up -d` 也会拉新）。
+
+镜像本体仍是三阶段构建：`node:20-alpine` 构建前端 → `golang:1.26-alpine`（`CGO_ENABLED=0` + `-ldflags="-s -w"`）编译静态二进制 → `alpine:3.20` 极简运行时。
+
+**本地源码构建**（开发/自编译，需 Dockerfile）：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 ### 直接运行二进制
 
@@ -48,6 +63,7 @@ go run .
 | `TGTO_STRM_DIR` | `/app/strm` | STRM 输出根目录 |
 | `TGTO_DATA_DIR` | `/app/data` | 本地媒体源 / 整理沙盒目录 |
 | `GOMEMLIMIT` | 空 | Go 运行时内存上限，如 `64MiB`（compose 已默认设置） |
+| `TGTO_IMAGE` | `ghcr.io/haixing1001/tgto:latest` | compose 拉取的镜像地址；固定/回滚版本时改成 `:sha-xxxxxxxx` 或 semver 标签 |
 
 ## 小型 NAS 专项优化
 
@@ -74,8 +90,10 @@ Tgto/
 │   │   └── http.go             # 共享 HTTP 客户端（代理支持）
 │   └── api/                    # Gin 路由、认证中间件、SPA 静态回退
 ├── web/                        # Vue3 + Vite + Tailwind 前端（13 个业务视图）
-├── Dockerfile                  # 三阶段构建
-└── docker-compose.yml
+├── Dockerfile                  # 三阶段构建（CI 使用，客户端部署无需）
+├── docker-compose.yml          # 客户端部署：拉取 GHCR 镜像
+├── docker-compose.build.yml    # 本地源码构建覆盖文件
+└── .github/workflows/docker.yml # 推送 main/v* → 构建并推送 amd64+arm64 镜像
 ```
 
 ## 功能视图（12 业务视图 + 登录页）
@@ -92,16 +110,20 @@ Tgto/
 
 ### 方式一：Docker 一键部署（推荐）
 
-```bash
-# 1. 上传工程到 VPS（本地 Windows  PowerShell / Git Bash 执行）
-scp -r Tgto root@<VPS-IP>:/opt/tgto
+镜像已在 GHCR 上构建好（多架构），VPS 只负责拉取运行：
 
-# 2. SSH 登录后一键部署（自动装 Docker / 生成随机密码 / 构建 / 健康检查）
+```bash
+# 1. 克隆工程（或只拷 docker-compose.yml + deploy/ 目录）
+git clone https://github.com/haixing1001/tgto.git /opt/tgto
+
+# 2. SSH 登录后一键部署（自动装 Docker / 生成随机密码 / 拉取镜像 / 健康检查）
 ssh root@<VPS-IP>
 cd /opt/tgto && bash deploy/deploy-docker.sh
 ```
 
-完成后访问 `http://<VPS-IP>:9058`，账号 `admin`，密码见 `.env` 的 `TGTO_PASSWORD`。
+脚本只执行 `docker compose pull` + `up -d`，不在 VPS 上编译（无需 Go / Node，1~3 分钟完成）。完成后访问 `http://<VPS-IP>:9058`，账号 `admin`，密码见 `.env` 的 `TGTO_PASSWORD`。
+
+**升级**：`cd /opt/tgto && docker compose pull && docker compose up -d`。回滚到某个构建：`.env` 里写 `TGTO_IMAGE=ghcr.io/haixing1001/tgto:sha-xxxxxxxx` 再 `up -d`。
 
 ### 方式二：免 Docker（systemd 单二进制）
 
@@ -129,7 +151,7 @@ ufw allow 80,443/tcp && ufw allow 22/tcp && ufw enable   # 9058 仅本机回源
 
 | 文件 | 用途 |
 | --- | --- |
-| `deploy/deploy-docker.sh` | Docker 一键部署（装 Docker、`.env` 随机密码、构建、健康检查） |
+| `deploy/deploy-docker.sh` | Docker 一键部署（装 Docker、`.env` 随机密码、拉取 GHCR 镜像、健康检查） |
 | `deploy/deploy-binary.sh` | 免 Docker 部署（systemd 服务、随机密码、健康检查） |
 | `deploy/tgto.service` | systemd 单元（内存限制、开机自启、崩溃重启） |
 | `deploy/nginx-tgto.conf` | Nginx 反代 + HTTPS 示例 |

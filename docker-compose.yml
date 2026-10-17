@@ -1,9 +1,14 @@
 services:
   tgto:
-    build: .
-    image: tgto:8.7.16
+    # 镜像由 GitHub Actions 在每次推送 main / v* tag 时自动构建并推送到 GHCR，
+    # 同时提供 linux/amd64 与 linux/arm64，compose 会自动选择本机架构。
+    # 固定版本：在 .env 里设置 TGTO_IMAGE=ghcr.io/haixing1001/tgto:sha-xxxxxxxx
+    image: ${TGTO_IMAGE:-ghcr.io/haixing1001/tgto:latest}
     container_name: tgto
     restart: unless-stopped
+    # latest 标签配合 always，让 `docker compose up -d` 总能拿到最新镜像；
+    # 固定了版本号时可改成 missing，避免每次重复拉取。
+    pull_policy: always
     ports:
       # 宿主机端口可通过 .env 的 TGTO_PORT 调整（默认 9058）
       - "${TGTO_PORT:-9058}:9058"

@@ -2,8 +2,9 @@
 # =============================================================================
 # Tgto Docker 一键部署脚本（在 VPS 上以 root 或 sudo 执行）
 #   用法：  bash deploy-docker.sh
-#   前提：  本目录为 Tgto 工程根目录（含 Dockerfile / docker-compose.yml）
-#   行为：  安装 Docker（如缺失）→ 生成 .env（首次随机密码）→ 构建并启动 → 健康检查
+#   前提：  本目录为 Tgto 工程根目录（含 docker-compose.yml）；无需 Dockerfile，
+#          镜像从 GHCR 拉取（ghcr.io/haixing1001/tgto，amd64/arm64 多架构）
+#   行为：  安装 Docker（如缺失）→ 生成 .env（首次随机密码）→ 拉取镜像并启动 → 健康检查
 # =============================================================================
 set -euo pipefail
 
@@ -52,6 +53,8 @@ TGTO_USER=admin
 TGTO_PASSWORD=${RAND_PASS}
 TGTO_PORT=${DEFAULT_PORT}
 TGTO_MEMLIMIT=64MiB
+# 固定镜像版本（留空/注释则跟随 ghcr.io/haixing1001/tgto:latest）
+#TGTO_IMAGE=ghcr.io/haixing1001/tgto:latest
 EOF
   chmod 600 .env
   say "已生成 .env：管理员 admin / 随机密码 ${RAND_PASS}（请妥善保存，可随时编辑 .env 后 docker compose up -d 生效）"
@@ -59,12 +62,17 @@ else
   say "检测到已有 .env，沿用现有配置"
 fi
 set -a; . ./.env; set +a
+IMAGE="${TGTO_IMAGE:-ghcr.io/haixing1001/tgto:latest}"
 
-# ---------- 3. 构建并启动 ----------
-say "开始构建镜像（首次约 2~5 分钟）..."
-docker compose build
+# ---------- 3. 拉取镜像并启动 ----------
+# 镜像由 GitHub Actions 构建（amd64 + arm64），客户端不再本地编译
+say "拉取镜像 ${IMAGE}（多架构，首次约 1~3 分钟）..."
+if ! docker compose pull; then
+  warn "拉取失败排查：网络是否可达 ghcr.io；镜像 tag 是否存在；私有包需先 docker login ghcr.io"
+  die "镜像拉取失败，已中止部署"
+fi
 say "启动容器..."
-docker compose up -d
+docker compose up -d --remove-orphans
 
 # ---------- 4. 健康检查 ----------
 say "等待服务就绪..."

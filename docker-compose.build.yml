@@ -1,0 +1,11 @@
+# 本地源码构建覆盖文件（开发/自编译用）：
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# 日常部署无需本文件——主 compose 直接拉取 GHCR 上 CI 构建好的多架构镜像。
+services:
+  tgto:
+    image: ${TGTO_IMAGE:-ghcr.io/haixing1001/tgto:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # 强制走本地构建，避免先去 registry 拉同名镜像
+    pull_policy: build
