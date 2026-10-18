@@ -183,6 +183,7 @@ func DefaultConfigs() map[string]map[string]any {
 		"cloud139": {
 			"username":          "",
 			"password":          "",
+			"mail_cookies":      "",
 			"authorization":     "",
 			"monitor_channels":  "",
 			"organize_enabled":  true,

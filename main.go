@@ -37,14 +37,14 @@ var versionFile string
 
 // appConfig 运行配置（环境变量驱动）。
 type appConfig struct {
-	Port      string
-	User      string
-	Password  string
-	DBDir     string
-	DataDir   string
-	STRMRoot  string
-	MemLimit  int64
-	Version   string
+	Port     string
+	User     string
+	Password string
+	DBDir    string
+	DataDir  string
+	STRMRoot string
+	MemLimit int64
+	Version  string
 }
 
 func getenv(key, def string) string {
@@ -160,6 +160,9 @@ func main() {
 
 	// 天翼云盘会话保活（SessionKey 续期，失败自动刷新会话）
 	svc.StartTyKeepAlive(ctx)
+
+	// 移动云盘令牌自动续期（剩余 <15 天时续期，失败回退账号密码登录）
+	svc.StartYun139KeepAlive(ctx)
 
 	go func() {
 		ring.Info(logger.ModSystem, "HTTP 服务已监听 :%s（数据目录 %s）", cfg.Port, filepath.Clean(cfg.DBDir))

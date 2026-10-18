@@ -21,13 +21,14 @@ export const DRIVES = {
           {
             key: 'account',
             title: '移动云盘账号配置',
-            desc: '中国移动云盘（139 / 和彩云）',
+            desc: '中国移动云盘（139 / 和彩云）· 新的个人盘',
             fields: [
-              { key: 'username', label: '登录账号', type: 'text', placeholder: '手机号或 139 邮箱' },
+              { key: 'username', label: '登录账号', type: 'text', placeholder: '139 邮箱 / 手机号' },
               { key: 'password', label: '登录密码', type: 'password' },
-              { key: 'authorization', label: '授权令牌（可选）', type: 'password', span: 2, placeholder: '粘贴浏览器请求头里的 Authorization，留空则用账号密码登录' }
+              { key: 'mail_cookies', label: '邮箱 Cookie（可选）', type: 'textarea', span: 2, placeholder: 'mail.10086.cn 的 Cookie 头（key1=value1; key2=value2），账号密码登录时作为设备上下文' },
+              { key: 'authorization', label: '授权令牌（可选，仅校验用）', type: 'password', span: 2, placeholder: 'yun.139.com 请求头 Authorization 里 Basic 之后的值' }
             ],
-            note: '优先使用「授权令牌」直连；未填令牌时按账号密码登录。令牌过期后到移动云盘网页版重新复制即可。'
+            note: '推荐「账号密码回退登录」：填写账号、密码（建议同时贴邮箱 Cookie）后点下方「账号密码登录」，服务端换取并持久化 Authorization，剩余不足 15 天自动续期，续期失败自动用账号密码重登。也可只填授权令牌后点「校验令牌」。'
           }
         ]
       },

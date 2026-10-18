@@ -56,16 +56,17 @@ func (h *Handlers) handleState(c *gin.Context) {
 	organize, _ := h.svc.DB.OrganizeHistory("", "", "", "", 1, 200)
 	logs := h.svc.Log.Query("", nil, 300)
 	ok(c, gin.H{
-		"version":         h.version,
-		"config":          h.svc.AllConfigs(),
+		"version":          h.version,
+		"config":           h.svc.AllConfigs(),
 		"transfer_history": transfer,
 		"organize_history": organize,
-		"logs":            logs,
-		"server_time":     time.Now().Format(time.RFC3339),
+		"logs":             logs,
+		"server_time":      time.Now().Format(time.RFC3339),
 		// 各网盘真实可用状态：天翼是扫码会话（data/tianyi_session.json），
 		// 不能用账号/密码字段判断——扫码登录根本不写 password。
 		"drive_status": gin.H{
-			"tianyi": h.svc.TyStatus(),
+			"tianyi":   h.svc.TyStatus(),
+			"cloud139": h.svc.Yun139Status(),
 		},
 	})
 }
@@ -481,6 +482,54 @@ func (h *Handlers) handleTianyiClear(c *gin.Context) {
 	ok(c, res)
 }
 
+// ---------------- 移动云盘（139）登录 ----------------
+
+func (h *Handlers) handleYun139Status(c *gin.Context) {
+	ok(c, h.svc.Yun139Status())
+}
+
+func (h *Handlers) handleYun139Login(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Login(ctx)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Verify(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Verify(ctx)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Clear(c *gin.Context) {
+	res, err := h.svc.Yun139Clear()
+	if err != nil {
+		fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Files(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Files(ctx, c.Query("parent_id"))
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
 // ---------------- 天翼云盘文件管理 ----------------
 
 func (h *Handlers) handleTianyiFiles(c *gin.Context) {
@@ -557,8 +606,8 @@ func (h *Handlers) handleTianyiRename(c *gin.Context) {
 
 func (h *Handlers) handleTianyiMove(c *gin.Context) {
 	var req struct {
-		Items           []service.TyBatchItem `json:"items"`
-		TargetFolderID  string                `json:"target_folder_id"`
+		Items          []service.TyBatchItem `json:"items"`
+		TargetFolderID string                `json:"target_folder_id"`
 	}
 	if bindJSON(c, &req) != nil {
 		return
@@ -583,8 +632,8 @@ func (h *Handlers) handleTianyiMove(c *gin.Context) {
 
 func (h *Handlers) handleTianyiCopy(c *gin.Context) {
 	var req struct {
-		Items           []service.TyBatchItem `json:"items"`
-		TargetFolderID  string                `json:"target_folder_id"`
+		Items          []service.TyBatchItem `json:"items"`
+		TargetFolderID string                `json:"target_folder_id"`
 	}
 	if bindJSON(c, &req) != nil {
 		return
@@ -712,9 +761,9 @@ func (h *Handlers) handleGuangyaFileDetail(c *gin.Context) {
 
 func (h *Handlers) handleGuangyaCreateDir(c *gin.Context) {
 	var req struct {
-		DirName          string `json:"dir_name"`
-		ParentID         string `json:"parent_id"`
-		FailIfNameExist  bool   `json:"fail_if_name_exist"`
+		DirName         string `json:"dir_name"`
+		ParentID        string `json:"parent_id"`
+		FailIfNameExist bool   `json:"fail_if_name_exist"`
 	}
 	if bindJSON(c, &req) != nil {
 		return

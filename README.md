@@ -65,6 +65,16 @@ go run .
 | `GOMEMLIMIT` | 空 | Go 运行时内存上限，如 `64MiB`（compose 已默认设置） |
 | `TGTO_IMAGE` | `ghcr.io/haixing1001/tgto:latest` | compose 拉取的镜像地址；固定/回滚版本时改成 `:sha-xxxxxxxx` 或 semver 标签 |
 
+## 移动云盘登录
+
+「新的个人盘」+ 账号密码回退登录（`驱动 = personal_new`）：
+
+1. 在「云盘支持 - 移动云盘 - 移动云盘账号配置」填写 **登录账号**（139 邮箱/手机号）与 **登录密码**。
+2. 建议同时粘贴 `mail.10086.cn` 的 **邮箱 Cookie**（`key1=value1; key2=value2` 形式）作为设备上下文，可显著降低风控概率。
+3. 点击面板里的「账号密码登录」，服务端完成三步换取 `Authorization` 并持久化到 `data/yun139_auth.json`。
+4. 令牌剩余不足 15 天时每 12 小时自动续期；续期失败自动回退账号密码重登。
+5. 也可只填「授权令牌」（`yun.139.com` 请求头 `Authorization` 里 `Basic` 之后的值）后点「校验令牌」。
+
 ## 小型 NAS 专项优化
 
 - **无 CGO SQLite**：`modernc.org/sqlite`，`CGO_ENABLED=0` 可交叉编译 arm64；启动即执行 `journal_mode=WAL / synchronous=NORMAL / temp_store=MEMORY / cache_size=-4000`，降低机械硬盘随机写。

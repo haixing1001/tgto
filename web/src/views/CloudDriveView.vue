@@ -90,6 +90,7 @@
 
           <!-- 天翼云盘扫码登录面板（仅天翼账号配置卡片展示） -->
           <TianyiQrLogin v-if="isTianyiAccountCard(card)" ref="tyQrPanel" />
+          <Yun139LoginPanel v-if="isYun139AccountCard(card)" ref="y139Panel" />
 
           <!-- 天翼云盘文件管理面板（仅天翼文件管理卡片展示） -->
           <div v-if="isTianyiFilesCard(card)" class="ty-fm">
@@ -382,6 +383,7 @@ import { DRIVES, driveFromRoute, submenuFromRoute } from '../driveDefs.js'
 import FieldRenderer from '../components/FieldRenderer.vue'
 import ModalDialog from '../components/ModalDialog.vue'
 import TianyiQrLogin from '../components/TianyiQrLogin.vue'
+import Yun139LoginPanel from '../components/Yun139LoginPanel.vue'
 import { api } from '../api.js'
 
 // 当前网盘与子菜单均来自 hash 路由（子菜单已升入左侧主导航）
@@ -407,6 +409,11 @@ function isGuangyaAccountCard(card) {
 
 function isTianyiAccountCard(card) {
   return drive.value === 'tianyi' && currentSubmenu.value.key === 'account' && card.key === 'account'
+}
+
+// 移动云盘（139）账号密码登录面板
+function isYun139AccountCard(card) {
+  return drive.value === 'cloud139' && currentSubmenu.value.key === 'account' && card.key === 'account'
 }
 
 function isGuangyaFilesCard(card) {

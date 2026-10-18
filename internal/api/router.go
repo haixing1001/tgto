@@ -99,6 +99,13 @@ func NewRouter(svc *service.Services, log *logger.RingLogger, static StaticConfi
 			secured.POST("/drive/tianyi/qr/cancel", h.handleTianyiQRCancel)
 			secured.POST("/drive/tianyi/login/clear", h.handleTianyiClear)
 
+			// 移动云盘（139）账号密码登录 / 令牌续期
+			secured.GET("/drive/yun139/status", h.handleYun139Status)
+			secured.POST("/drive/yun139/login", h.handleYun139Login)
+			secured.POST("/drive/yun139/verify", h.handleYun139Verify)
+			secured.POST("/drive/yun139/clear", h.handleYun139Clear)
+			secured.GET("/drive/yun139/files", h.handleYun139Files)
+
 			// 天翼云盘文件管理
 			secured.GET("/drive/tianyi/files", h.handleTianyiFiles)
 			secured.POST("/drive/tianyi/files/mkdir", h.handleTianyiCreateDir)
