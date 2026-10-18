@@ -756,7 +756,7 @@ func (s *Services) y139VerifyAuthorization(ctx context.Context, authorization st
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.y139ListFiles(ctx, authorization, host, ""); err != nil {
+	if _, err := s.y139ListFiles(ctx, authorization, host, "/"); err != nil {
 		return nil, err
 	}
 	if err := s.saveY139Auth(auth); err != nil {
@@ -934,6 +934,8 @@ func (s *Services) y139RouteHost(ctx context.Context, authorization string) (str
 
 // y139ListFiles 列出个人云目录（parentID 为空表示根目录）。
 func (s *Services) y139ListFiles(ctx context.Context, authorization, host, parentID string) (map[string]any, error) {
+	// 服务端要求 parentFileId 非空：空/root 统一成根目录 "/"
+	parentID = y139CatalogID(parentID)
 	payload := map[string]any{
 		"imageThumbnailStyleList": []string{"Small", "Large"},
 		"orderBy":                 "updated_at",

@@ -442,6 +442,15 @@ func (s *Services) y139SharePost(ctx context.Context, path string, payload any) 
 	return body, nil
 }
 
+// y139CatalogID 规范化目录 ID：空、root、0 都表示根目录 "/"。
+func y139CatalogID(id string) string {
+	switch strings.TrimSpace(id) {
+	case "", "/", "root", "0":
+		return "/"
+	}
+	return strings.TrimSpace(id)
+}
+
 // y139PhoneOf 从配置里取手机号（账号字段或 Authorization 内解析）。
 func y139PhoneOf(cfg map[string]any) string {
 	if p := strings.TrimSpace(toString(cfg["username"])); p != "" {

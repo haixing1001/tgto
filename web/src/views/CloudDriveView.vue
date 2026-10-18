@@ -92,6 +92,9 @@
           <TianyiQrLogin v-if="isTianyiAccountCard(card)" ref="tyQrPanel" />
           <Yun139LoginPanel v-if="isYun139AccountCard(card)" ref="y139Panel" />
 
+          <!-- 移动云盘文件管理面板 -->
+          <Yun139FileManager v-if="isYun139FilesCard(card)" />
+
           <!-- 天翼云盘文件管理面板（仅天翼文件管理卡片展示） -->
           <div v-if="isTianyiFilesCard(card)" class="ty-fm">
             <div class="ty-fm-toolbar">
@@ -384,6 +387,7 @@ import FieldRenderer from '../components/FieldRenderer.vue'
 import ModalDialog from '../components/ModalDialog.vue'
 import TianyiQrLogin from '../components/TianyiQrLogin.vue'
 import Yun139LoginPanel from '../components/Yun139LoginPanel.vue'
+import Yun139FileManager from '../components/Yun139FileManager.vue'
 import { api } from '../api.js'
 
 // 当前网盘与子菜单均来自 hash 路由（子菜单已升入左侧主导航）
@@ -422,6 +426,10 @@ function isGuangyaFilesCard(card) {
 
 function isTianyiFilesCard(card) {
   return drive.value === 'tianyi' && currentSubmenu.value.key === 'files' && card.key === 'files'
+}
+
+function isYun139FilesCard(card) {
+  return drive.value === 'cloud139' && currentSubmenu.value.key === 'files' && card.key === 'files'
 }
 
 // ---------------- 天翼云盘文件管理 ----------------

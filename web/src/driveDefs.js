@@ -33,6 +33,17 @@ export const DRIVES = {
         ]
       },
       {
+        key: 'files',
+        title: '文件管理',
+        cards: [
+          {
+            key: 'files',
+            title: '移动云盘文件管理',
+            desc: '浏览、新建、重命名、移动、复制、删除网盘文件，以及清空回收站。'
+          }
+        ]
+      },
+      {
         key: 'monitor',
         title: '移动云盘频道监控配置',
         cards: [

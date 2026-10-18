@@ -21,11 +21,11 @@ type StaticConfig struct {
 
 // Handlers 接口处理器集合。
 type Handlers struct {
-	svc          *service.Services
-	log          *logger.RingLogger
-	version      string
-	adminUser    string
-	adminPass    string
+	svc       *service.Services
+	log       *logger.RingLogger
+	version   string
+	adminUser string
+	adminPass string
 }
 
 // NewRouter 构建 Gin 引擎与全部路由。
@@ -106,6 +106,13 @@ func NewRouter(svc *service.Services, log *logger.RingLogger, static StaticConfi
 			secured.POST("/drive/yun139/verify", h.handleYun139Verify)
 			secured.POST("/drive/yun139/clear", h.handleYun139Clear)
 			secured.GET("/drive/yun139/files", h.handleYun139Files)
+			secured.POST("/drive/yun139/files/mkdir", h.handleYun139Mkdir)
+			secured.POST("/drive/yun139/files/rename", h.handleYun139Rename)
+			secured.POST("/drive/yun139/files/move", h.handleYun139Move)
+			secured.POST("/drive/yun139/files/copy", h.handleYun139Copy)
+			secured.POST("/drive/yun139/files/delete", h.handleYun139Delete)
+			secured.POST("/drive/yun139/files/recycle/clear", h.handleYun139ClearRecycle)
+			secured.POST("/drive/yun139/files/download_url", h.handleYun139DownloadURL)
 
 			// 天翼云盘文件管理
 			secured.GET("/drive/tianyi/files", h.handleTianyiFiles)

@@ -181,3 +181,28 @@ func TestY139WaitTaskStatusShapes(t *testing.T) {
 		})
 	}
 }
+
+// TestY139ListFilesParentID 根目录必须传 "/"，空串会被服务端拒绝
+// （用户实机报「文件列表请求失败: 父目录ID不允许为空」）。
+func TestY139ListFilesParentID(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var in struct {
+			ParentFileID string `json:"parentFileId"`
+		}
+		_ = json.Unmarshal(raw, &in)
+		got = in.ParentFileID
+		_, _ = w.Write([]byte(`{"success":true,"data":{"items":[]}}`))
+	}))
+	defer srv.Close()
+	s := newY139TestServices(t)
+	for _, in := range []string{"", "root", "0", "/", "  "} {
+		if _, err := s.y139ListFiles(context.Background(), "auth", srv.URL, in); err != nil {
+			t.Fatalf("%q: %v", in, err)
+		}
+		if got != "/" {
+			t.Fatalf("输入 %q 应归一化为根目录 /，实际发送 %q", in, got)
+		}
+	}
+}

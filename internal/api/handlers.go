@@ -544,7 +544,133 @@ func (h *Handlers) handleYun139Clear(c *gin.Context) {
 func (h *Handlers) handleYun139Files(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
-	res, err := h.svc.Yun139Files(ctx, c.Query("parent_id"))
+	res, err := h.svc.Yun139FileList(ctx, c.Query("parent_id"), queryInt(c, "page_size", 200))
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Mkdir(c *gin.Context) {
+	var req struct {
+		DirName  string `json:"dir_name"`
+		ParentID string `json:"parent_id"`
+	}
+	if bindJSON(c, &req) != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 40*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Mkdir(ctx, req.DirName, req.ParentID)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Rename(c *gin.Context) {
+	var req struct {
+		FileID  string `json:"file_id"`
+		NewName string `json:"new_name"`
+	}
+	if bindJSON(c, &req) != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Rename(ctx, req.FileID, req.NewName)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Move(c *gin.Context) {
+	h.yun139Batch(c, false)
+}
+
+func (h *Handlers) handleYun139Copy(c *gin.Context) {
+	h.yun139Batch(c, true)
+}
+
+// yun139Batch 移动/复制共用：items + target_folder_id。
+func (h *Handlers) yun139Batch(c *gin.Context, copy bool) {
+	var req struct {
+		Items          []service.Yun139BatchItem `json:"items"`
+		TargetFolderID string                    `json:"target_folder_id"`
+	}
+	if bindJSON(c, &req) != nil {
+		return
+	}
+	ids := make([]string, 0, len(req.Items))
+	for _, it := range req.Items {
+		ids = append(ids, it.FileID)
+	}
+	if len(ids) == 0 {
+		fail(c, http.StatusBadRequest, "items 不能为空")
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+	var res map[string]any
+	var err error
+	if copy {
+		res, err = h.svc.Yun139Copy(ctx, ids, req.TargetFolderID)
+	} else {
+		res, err = h.svc.Yun139Move(ctx, ids, req.TargetFolderID)
+	}
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139Delete(c *gin.Context) {
+	var req struct {
+		Items []service.Yun139BatchItem `json:"items"`
+	}
+	if bindJSON(c, &req) != nil {
+		return
+	}
+	ids := make([]string, 0, len(req.Items))
+	for _, it := range req.Items {
+		ids = append(ids, it.FileID)
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139Delete(ctx, ids)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139ClearRecycle(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139ClearRecycle(ctx)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139DownloadURL(c *gin.Context) {
+	var req struct {
+		FileID string `json:"file_id"`
+	}
+	if bindJSON(c, &req) != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139DownloadURL(ctx, req.FileID)
 	if err != nil {
 		fail(c, http.StatusBadRequest, err.Error())
 		return
