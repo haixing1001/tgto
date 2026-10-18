@@ -28,7 +28,7 @@ export const DRIVES = {
               { key: 'mail_cookies', label: '邮箱 Cookie（可选）', type: 'textarea', span: 2, placeholder: 'mail.10086.cn 的 Cookie 头（key1=value1; key2=value2），账号密码登录时作为设备上下文' },
               { key: 'authorization', label: '授权令牌（可选，仅校验用）', type: 'password', span: 2, placeholder: 'yun.139.com 请求头 Authorization 里 Basic 之后的值' }
             ],
-            note: '推荐「账号密码回退登录」：填写账号、密码（建议同时贴邮箱 Cookie）后点下方「账号密码登录」，服务端换取并持久化 Authorization，剩余不足 15 天自动续期，续期失败自动用账号密码重登。也可只填授权令牌后点「校验令牌」。'
+            note: '推荐「账号密码回退登录」：填写账号、密码后点下方「账号密码登录」。若返回风控错误，先在浏览器登录 mail.10086.cn，把含 Os_SSo_Sid 与 RMKEY 的完整 Cookie 贴到「邮箱 Cookie」再登录（自动走 Cookie 快速登录）。登录成功后令牌剩余不足 15 天自动续期，续期失败自动重登；也可只填授权令牌后点「校验令牌」。'
           }
         ]
       },

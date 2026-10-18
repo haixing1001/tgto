@@ -2,8 +2,9 @@
   <div class="y139-panel">
     <div class="y139-title">移动云盘登录（新的个人盘 · 账号密码回退）</div>
     <div class="y139-hint">
-      填好上方「登录账号 / 登录密码 / 邮箱 Cookie」后点「账号密码登录」；
-      也可只填「授权令牌」后点「校验令牌」。登录成功后令牌会自动续期，剩余不足 15 天时自动刷新。
+      填好上方「登录账号 / 登录密码」后点「账号密码登录」；若提示风控，先在浏览器登录
+      <b>mail.10086.cn</b>，把完整 Cookie（含 <code>Os_SSo_Sid</code>、<code>RMKEY</code>）贴到「邮箱 Cookie」再点登录，
+      会改用 Cookie 快速登录绕过邮箱密码校验。也可只填「授权令牌」后点「校验令牌」。
     </div>
 
     <div class="y139-controls">

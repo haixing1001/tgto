@@ -173,18 +173,32 @@ func (s *Services) Yun139Login(ctx context.Context) (map[string]any, error) {
 	password := toString(cfg["password"])
 	cookies := strings.TrimSpace(toString(cfg["mail_cookies"]))
 
-	if username == "" || password == "" {
-		return nil, fmt.Errorf("账号或密码为空：账号密码回退登录需要同时填写「登录账号」与「登录密码」")
-	}
-
-	// 已手填授权令牌时优先直接校验，不再走密码登录。
+	// 1) 已手填授权令牌：直接校验
 	if tok := strings.TrimSpace(toString(cfg["authorization"])); tok != "" {
 		if _, err := s.y139VerifyAuthorization(ctx, tok); err == nil {
 			return s.Yun139Status(), nil
 		}
-		s.Log.Warn(logger.ModCloud139, "[移动云盘] 配置里的授权令牌无效，改用账号密码登录")
+		s.Log.Warn(logger.ModCloud139, "[移动云盘] 配置里的授权令牌无效，尝试其它登录方式")
 	}
 
+	// 2) 邮箱 Cookie 快速登录：Cookie 里同时有 Os_SSo_Sid 与 RMKEY 时，
+	//    跳过邮箱密码登录，直接用 sid 走第 2/3 步（OpenList 同款策略，规避 10086 登录风控）。
+	if sid := y139CookieValue(cookies, "Os_SSo_Sid"); sid != "" && y139CookieValue(cookies, "RMKEY") != "" {
+		if _, err := s.y139LoginBySID(ctx, username, sid, cookies); err == nil {
+			return s.Yun139Status(), nil
+		} else {
+			s.Log.Warn(logger.ModCloud139, "[移动云盘] 邮箱 Cookie 快速登录失败：%v", err)
+			if username == "" || password == "" {
+				return nil, fmt.Errorf("邮箱 Cookie 快速登录失败：%v；可补填账号密码后重试", err)
+			}
+		}
+	}
+
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("没有可用的登录凭据：请填写「登录账号 + 登录密码」（建议同时粘贴邮箱 Cookie），或粘贴含 Os_SSo_Sid 与 RMKEY 的邮箱 Cookie")
+	}
+
+	// 3) 账号密码回退登录
 	sid, mergedCookies, err := s.y139Step1(ctx, username, password, cookies)
 	if err != nil {
 		return nil, err
@@ -208,6 +222,30 @@ func (s *Services) Yun139Login(ctx context.Context) (map[string]any, error) {
 	_, _ = s.SaveConfig(Drive139, patch)
 	s.Log.Info(logger.ModCloud139, "[移动云盘] 账号密码登录成功，账号=%s", auth.Account)
 	return s.Yun139Status(), nil
+}
+
+// y139LoginBySID 用已有 sid（来自邮箱 Cookie）直接换取 Authorization。
+func (s *Services) y139LoginBySID(ctx context.Context, username, sid, cookies string) (*y139Auth, error) {
+	artifact, err := s.y139Step2(ctx, sid, cookies)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := s.y139Step3(ctx, username, artifact)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.saveY139Auth(auth); err != nil {
+		return nil, err
+	}
+	patch := map[string]any{}
+	if auth.Account != "" {
+		patch["account"] = auth.Account
+	}
+	if len(patch) > 0 {
+		_, _ = s.SaveConfig(Drive139, patch)
+	}
+	s.Log.Info(logger.ModCloud139, "[移动云盘] 邮箱 Cookie 快速登录成功，账号=%s", auth.Account)
+	return auth, nil
 }
 
 // y139Step1 邮箱密码登录，返回 sid 与合并后的 Cookie。
@@ -250,11 +288,12 @@ func (s *Services) y139Step1(ctx context.Context, username, password, cookies st
 		return "", cookies, fmt.Errorf("邮箱登录请求失败: %w", err)
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 
 	merged := y139MergeCookies(cookies, resp.Cookies())
 	sid := ""
-	if loc := resp.Header.Get("Location"); loc != "" {
+	loc := resp.Header.Get("Location")
+	if loc != "" {
 		if u, perr := url.Parse(loc); perr == nil {
 			sid = u.Query().Get("sid")
 			if sid == "" {
@@ -274,7 +313,8 @@ func (s *Services) y139Step1(ctx context.Context, username, password, cookies st
 		}
 	}
 	if sid == "" {
-		return "", merged, fmt.Errorf("邮箱登录失败：未获取到 sid（账号密码错误或触发风控，HTTP %d）", resp.StatusCode)
+		return "", merged, fmt.Errorf("邮箱登录失败：未获取到 sid（HTTP %d）%s",
+			resp.StatusCode, y139LoginFailureDetail(resp, loc, bodyBytes))
 	}
 	return sid, merged, nil
 }
@@ -893,6 +933,55 @@ func y139TokenExpiry(token string) int64 {
 		return 0
 	}
 	return n
+}
+
+// y139LoginFailureDetail 汇总登录失败时的关键响应信息（脱敏），便于定位账号密码错误/风控。
+func y139LoginFailureDetail(resp *http.Response, loc string, body []byte) string {
+	parts := make([]string, 0, 3)
+	if loc != "" {
+		parts = append(parts, "Location="+y139SanitizeURL(loc))
+	}
+	if names := y139SetCookieNames(resp.Cookies()); len(names) > 0 {
+		parts = append(parts, "Set-Cookie=["+strings.Join(names, ",")+"]")
+	}
+	if snippet := strings.TrimSpace(string(body)); snippet != "" {
+		parts = append(parts, "body="+truncate(snippet, 180))
+	}
+	if len(parts) == 0 {
+		return "（响应既无跳转也无 Cookie，通常是账号或密码错误）"
+	}
+	return "；" + strings.Join(parts, "；") + "；若出现 code/errCode 等参数，说明触发了 10086 风控，请在浏览器登录一次 mail.10086.cn 后把完整 Cookie 贴到「邮箱 Cookie」再试"
+}
+
+// y139SanitizeURL 隐藏 URL 里敏感参数的值，仅保留前 4 位。
+func y139SanitizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return truncate(raw, 200)
+	}
+	q := u.Query()
+	for key := range q {
+		lower := strings.ToLower(key)
+		if strings.Contains(lower, "sid") || strings.Contains(lower, "token") ||
+			strings.Contains(lower, "passport") || strings.Contains(lower, "code") || strings.Contains(lower, "rmkey") {
+			v := q.Get(key)
+			if len(v) > 4 {
+				v = v[:4] + "REDACTED"
+			}
+			q.Set(key, v)
+		}
+	}
+	u.RawQuery = q.Encode()
+	out := u.String()
+	return truncate(out, 300)
+}
+
+func y139SetCookieNames(cs []*http.Cookie) []string {
+	names := make([]string, 0, len(cs))
+	for _, c := range cs {
+		names = append(names, c.Name)
+	}
+	return names
 }
 
 func y139CookieValue(cookies, name string) string {

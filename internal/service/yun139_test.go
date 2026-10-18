@@ -286,3 +286,92 @@ func TestYun139StatusExpired(t *testing.T) {
 func itoa64(n int64) string {
 	return strconv.FormatInt(n, 10)
 }
+
+// TestYun139FastLoginWithCookies 邮箱 Cookie 含 Os_SSo_Sid+RMKEY 时跳过邮箱密码登录。
+func TestYun139FastLoginWithCookies(t *testing.T) {
+	s := newY139TestServices(t)
+	if _, err := s.SaveConfig(Drive139, map[string]any{
+		"username": "18900000000", "password": "secret",
+		"mail_cookies": "Os_SSo_Sid=sid-9; RMKEY=rm-9",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	key1, _ := hex.DecodeString(y139Key1)
+	key2, _ := hex.DecodeString(y139Key2)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		t.Error("快速登录路径不应再请求邮箱密码登录")
+	})
+	mux.HandleFunc("/artifact", func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("sid"); got != "sid-9" {
+			t.Errorf("sid = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"var":{"artifact":"ART-9"}}`))
+	})
+	mux.HandleFunc("/thirdlogin", func(w http.ResponseWriter, r *http.Request) {
+		exp := time.Now().Add(60 * 24 * time.Hour).UnixMilli()
+		layer2 := `{"authToken":"a|b|c|` + itoa64(exp) + `|z","account":"18900000000","userDomainId":"ud-9"}`
+		enc2, _ := y139AESCBCEncrypt([]byte(layer2), key2, make([]byte, aes.BlockSize))
+		iv := make([]byte, aes.BlockSize)
+		_, _ = crand.Read(iv)
+		enc1, _ := y139AESCBCEncrypt([]byte(`{"data":"`+hex.EncodeToString(enc2)+`"}`), key1, iv)
+		_, _ = w.Write([]byte(base64.StdEncoding.EncodeToString(append(iv, enc1...))))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldLogin, oldArtifact, oldThird := y139MailLoginBase, y139ArtifactBase, y139ThirdLoginBase
+	y139MailLoginBase, y139ArtifactBase, y139ThirdLoginBase = srv.URL+"/login", srv.URL+"/artifact", srv.URL+"/thirdlogin"
+	t.Cleanup(func() { y139MailLoginBase, y139ArtifactBase, y139ThirdLoginBase = oldLogin, oldArtifact, oldThird })
+
+	status, err := s.Yun139Login(context.Background())
+	if err != nil {
+		t.Fatalf("快速登录失败: %v", err)
+	}
+	if status["logged_in"] != true {
+		t.Fatalf("应已登录: %v", status)
+	}
+}
+
+// TestYun139LoginFailureDiagnostics 邮箱登录 302 无 sid 时，错误信息要带脱敏的 Location 与风控提示。
+func TestYun139LoginFailureDiagnostics(t *testing.T) {
+	s := newY139TestServices(t)
+	if _, err := s.SaveConfig(Drive139, map[string]any{
+		"username": "18900000000", "password": "wrong",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "https://mail.10086.cn/default.html?errCode=110&u=18900000000")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer srv.Close()
+
+	oldLogin := y139MailLoginBase
+	y139MailLoginBase = srv.URL
+	t.Cleanup(func() { y139MailLoginBase = oldLogin })
+
+	_, err := s.Yun139Login(context.Background())
+	if err == nil {
+		t.Fatal("应返回登录失败")
+	}
+	msg := err.Error()
+	for _, want := range []string{"Location=", "errCode=110", "风控"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("错误信息缺少 %q: %s", want, msg)
+		}
+	}
+
+}
+
+func TestY139SanitizeURL(t *testing.T) {
+	out := y139SanitizeURL("https://mail.10086.cn/x?sid=abcdef123456&token=zzzzzzzz&errCode=110")
+	if strings.Contains(out, "abcdef123456") || strings.Contains(out, "zzzzzzzz") {
+		t.Fatalf("敏感参数未脱敏: %s", out)
+	}
+	if !strings.Contains(out, "abcdREDACTED") || !strings.Contains(out, "errCode=110") {
+		t.Fatalf("脱敏结果不符: %s", out)
+	}
+}
