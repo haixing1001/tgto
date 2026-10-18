@@ -489,9 +489,30 @@ func (h *Handlers) handleYun139Status(c *gin.Context) {
 }
 
 func (h *Handlers) handleYun139Login(c *gin.Context) {
+	var req struct {
+		SMSCode string `json:"sms_code"`
+	}
+	_ = c.ShouldBindJSON(&req)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
-	res, err := h.svc.Yun139Login(ctx)
+	var res map[string]any
+	var err error
+	if strings.TrimSpace(req.SMSCode) != "" {
+		res, err = h.svc.Yun139LoginSMS(ctx, strings.TrimSpace(req.SMSCode))
+	} else {
+		res, err = h.svc.Yun139Login(ctx)
+	}
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok(c, res)
+}
+
+func (h *Handlers) handleYun139SMSSend(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+	res, err := h.svc.Yun139SMSSend(ctx)
 	if err != nil {
 		fail(c, http.StatusBadRequest, err.Error())
 		return

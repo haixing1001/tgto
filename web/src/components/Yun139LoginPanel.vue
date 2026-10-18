@@ -11,12 +11,27 @@
       <button type="button" class="y139-btn" :disabled="busy !== ''" @click="doLogin">
         {{ busy === 'login' ? '登录中...' : '账号密码登录' }}
       </button>
+      <button type="button" class="y139-btn-ghost" :disabled="busy !== ''" @click="doSendSMS">
+        {{ busy === 'sms' ? '发送中...' : '重发验证码' }}
+      </button>
       <button type="button" class="y139-btn-ghost" :disabled="busy !== ''" @click="doVerify">
         {{ busy === 'verify' ? '校验中...' : '校验令牌' }}
       </button>
       <button type="button" class="y139-btn-ghost" :disabled="busy !== ''" @click="doClear">
         {{ busy === 'clear' ? '清除中...' : '清除登录' }}
       </button>
+    </div>
+
+    <div v-if="smsRequired" class="y139-sms">
+      <input
+        v-model="smsCode"
+        class="y139-sms-input"
+        type="text"
+        inputmode="numeric"
+        placeholder="短信验证码"
+        @keyup.enter="doLogin"
+      />
+      <div class="y139-sms-hint">已触发 10086 风控短信验证：输入收到的验证码，再点上方「账号密码登录」完成登录。</div>
     </div>
 
     <div class="y139-status" :class="st.logged_in ? 'ok' : 'idle'">{{ st.status }}</div>
@@ -35,6 +50,8 @@ import { api } from '../api'
 import { toast, bootstrap } from '../store'
 
 const busy = ref('')
+const smsCode = ref('')
+const smsRequired = ref(false)
 const st = reactive({
   logged_in: false,
   status: '加载中...',
@@ -64,13 +81,34 @@ async function refreshStatus() {
 async function doLogin() {
   busy.value = 'login'
   try {
-    const res = await api.post('/api/drive/yun139/login')
+    const res = await api.post('/api/drive/yun139/login', smsCode.value.trim() ? { sms_code: smsCode.value.trim() } : {})
+    if (res.sms_required) {
+      smsRequired.value = true
+      toast('info', '需要短信验证', res.status || '验证码已发送，请输入后再次登录')
+    }
     Object.assign(st, res)
-    toast('success', '登录成功', `移动云盘账号：${res.account || '已登录'}`)
-    await bootstrap()
+    if (!res.sms_required) {
+      smsRequired.value = false
+      smsCode.value = ''
+      toast('success', '登录成功', `移动云盘账号：${res.account || '已登录'}`)
+      await bootstrap()
+    }
   } catch (e) {
     toast('error', '登录失败', e.message)
     await refreshStatus()
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function doSendSMS() {
+  busy.value = 'sms'
+  try {
+    const res = await api.post('/api/drive/yun139/sms/send')
+    smsRequired.value = true
+    toast('info', '验证码已发送', res.status || '请输入短信验证码后点击「账号密码登录」')
+  } catch (e) {
+    toast('error', '发送失败', e.message)
   } finally {
     busy.value = ''
   }
@@ -135,4 +173,7 @@ defineExpose({ refreshStatus })
 .y139-status.idle { color: #94a3b8; }
 .y139-meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: #94a3b8; }
 .y139-tag { padding: 1px 6px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.y139-sms { margin-top: 10px; }
+.y139-sms-input { width: 160px; padding: 6px 10px; font-size: 12px; border: 1px solid rgba(148,163,184,.4); border-radius: 8px; background: transparent; color: inherit; }
+.y139-sms-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; }
 </style>

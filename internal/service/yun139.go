@@ -19,7 +19,9 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	crand "crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -31,9 +33,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"tgto/internal/logger"
@@ -44,6 +48,7 @@ const (
 	y139Key2 = "7150714477323633586746674c337538"                 // 第二层 AES 密钥（hex）
 
 	y139MailLoginURL  = "https://mail.10086.cn/Login/Login.ashx"
+	y139MailSMSURL    = "https://mail.10086.cn/s"
 	y139ArtifactURL   = "https://smsrebuild1.mail.10086.cn/setting/s"
 	y139ThirdLoginURL = "https://user-njs.yun.139.com/user/thirdlogin"
 	y139RefreshURL    = "https://aas.caiyun.feixin.10086.cn:443/tellin/authTokenRefresh.do"
@@ -61,6 +66,41 @@ var (
 	y139RefreshBase    = y139RefreshURL
 	y139RouteBase      = y139RouteURL
 )
+
+// y139SMSState 一次短信验证的中间态（进程内存，避免把验证码落盘）。
+type y139SMSState struct {
+	RiskCode string
+	Username string
+	Cookies  string
+}
+
+var (
+	y139SMSMu   sync.Mutex
+	y139SMSPre  *y139SMSState
+	y139MailSMS = y139MailSMSURL
+	y139MailPub = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnsOHTFtwW5rq/8gGhPlM5Z3RPdeN/d+FYIHb5JmcfBOCozXuT8c+0anvxtkjzghixwNlnmBuhN8OYfS789YuH/qReQbHC7OdlisLildNWPHRNUYcPa0W3lXSG3+81CXK7FDXPvXo5ubw2GqVbIsccMarI1dyfXdi4ITiCXvmM9wYBdUs9yXtoorhlpyYUI2GV8HNsVjWK9P5QZHT3ox5Qy+mjRmvv6RUFJLPOMkOS/pGZ0DwC1ypFZBxstW0/ftVupdOmGWvW7J2/e3dq3A/UvIkC4YUY/diL1wighJx1G9MiRROISjNMvNyUDSTqPJy516+l3sgHEbc067QIJx2NQIDAQAB"
+)
+
+// y139RiskScene 10086 邮箱登录风控码 -> 短信验证场景（OpenList 同款映射）。
+func y139RiskScene(code string) (int, bool) {
+	switch code {
+	case "PML401010062":
+		return 2, true
+	case "MW0016":
+		return 4, true
+	case "S025", "S035":
+		return 1, true
+	}
+	return 0, false
+}
+
+func y139RiskCodeOf(location string) string {
+	u, err := url.Parse(location)
+	if err != nil {
+		return ""
+	}
+	return u.Query().Get("ec")
+}
 
 // y139Auth 持久化到 DataDir/yun139_auth.json。
 type y139Auth struct {
@@ -200,10 +240,91 @@ func (s *Services) Yun139Login(ctx context.Context) (map[string]any, error) {
 
 	// 3) 账号密码回退登录
 	sid, mergedCookies, err := s.y139Step1(ctx, username, password, cookies)
+	var riskErr *y139RiskError
+	if errors.As(err, &riskErr) {
+		// 触发风控：自动发送短信验证码，让用户输码后重新点登录
+		if serr := s.y139SendSMS(ctx); serr != nil {
+			return nil, fmt.Errorf("登录需要短信验证（ec=%s），但发送验证码失败: %v", riskErr.RiskCode, serr)
+		}
+		return map[string]any{
+			"sms_required": true,
+			"risk_code":    riskErr.RiskCode,
+			"logged_in":    false,
+			"status":       fmt.Sprintf("已向 %s 发送短信验证码（风控 ec=%s），请输入验证码后再次点击「账号密码登录」", username, riskErr.RiskCode),
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	artifact, err := s.y139Step2(ctx, sid, mergedCookies)
+	return s.y139FinishLogin(ctx, username, sid, mergedCookies)
+}
+
+// y139RiskError 邮箱登录触发风控（可短信验证）的哨兵错误。
+type y139RiskError struct {
+	RiskCode string
+	Scene    int
+}
+
+func (e *y139RiskError) Error() string {
+	return fmt.Sprintf("邮箱登录触发风控（ec=%s），需要短信验证", e.RiskCode)
+}
+
+// Yun139LoginSMS 用短信验证码完成登录（配合 Yun139Login 自动发送的验证码）。
+func (s *Services) Yun139LoginSMS(ctx context.Context, code string) (map[string]any, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return nil, fmt.Errorf("请输入短信验证码")
+	}
+	y139SMSMu.Lock()
+	pre := y139SMSPre
+	y139SMSMu.Unlock()
+	if pre == nil {
+		return nil, fmt.Errorf("尚未触发短信验证：请先点「账号密码登录」，系统会自动发送验证码")
+	}
+	sid, merged, err := s.y139VerifySMS(ctx, pre, code)
+	if err != nil {
+		return nil, err
+	}
+	y139SMSMu.Lock()
+	y139SMSPre = nil
+	y139SMSMu.Unlock()
+	if merged != "" {
+		_, _ = s.SaveConfig(Drive139, map[string]any{"mail_cookies": merged})
+	}
+	return s.y139FinishLogin(ctx, pre.Username, sid, merged)
+}
+
+// Yun139SMSSend 重发短信验证码（没有进行中的验证时，先触发一次登录拿风控码）。
+func (s *Services) Yun139SMSSend(ctx context.Context) (map[string]any, error) {
+	cfg := s.GetConfig(Drive139)
+	username := strings.TrimSpace(toString(cfg["username"]))
+	password := toString(cfg["password"])
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("请先填写「登录账号」与「登录密码」")
+	}
+	y139SMSMu.Lock()
+	pre := y139SMSPre
+	y139SMSMu.Unlock()
+	if pre == nil || pre.Username != username {
+		_, merged, err := s.y139Step1(ctx, username, password, strings.TrimSpace(toString(cfg["mail_cookies"])))
+		var riskErr *y139RiskError
+		if !errors.As(err, &riskErr) {
+			if err == nil {
+				return nil, fmt.Errorf("本次登录未触发短信验证，直接点「账号密码登录」即可")
+			}
+			return nil, err
+		}
+		_ = merged
+	}
+	if err := s.y139SendSMS(ctx); err != nil {
+		return nil, err
+	}
+	return map[string]any{"sms_required": true, "status": "短信验证码已发送，请查收后输入并登录"}, nil
+}
+
+// y139FinishLogin sid -> artifact -> Authorization -> 落盘。
+func (s *Services) y139FinishLogin(ctx context.Context, username, sid, cookies string) (map[string]any, error) {
+	artifact, err := s.y139Step2(ctx, sid, cookies)
 	if err != nil {
 		return nil, err
 	}
@@ -214,14 +335,216 @@ func (s *Services) Yun139Login(ctx context.Context) (map[string]any, error) {
 	if err := s.saveY139Auth(auth); err != nil {
 		return nil, err
 	}
-	// 回写解析出的账号与（可能被服务端更新的）邮箱 Cookie，方便下次免登录续期
-	patch := map[string]any{"account": auth.Account}
-	if mergedCookies != "" {
-		patch["mail_cookies"] = mergedCookies
+	patch := map[string]any{}
+	if auth.Account != "" {
+		patch["account"] = auth.Account
 	}
-	_, _ = s.SaveConfig(Drive139, patch)
+	if cookies != "" {
+		patch["mail_cookies"] = cookies
+	}
+	if len(patch) > 0 {
+		_, _ = s.SaveConfig(Drive139, patch)
+	}
 	s.Log.Info(logger.ModCloud139, "[移动云盘] 账号密码登录成功，账号=%s", auth.Account)
 	return s.Yun139Status(), nil
+}
+
+// y139SendSMS 调 login:sendSmsCodeByScene 发送短信验证码（使用 step1 存下的风控态）。
+func (s *Services) y139SendSMS(ctx context.Context) error {
+	y139SMSMu.Lock()
+	pre := y139SMSPre
+	y139SMSMu.Unlock()
+	if pre == nil {
+		return fmt.Errorf("没有进行中的短信验证")
+	}
+	scene, ok := y139RiskScene(pre.RiskCode)
+	if !ok {
+		return fmt.Errorf("风控码 %s 不支持短信验证", pre.RiskCode)
+	}
+	loginName, err := y139EncryptLoginName(pre.Username)
+	if err != nil {
+		return err
+	}
+	fields := [][2]string{
+		{"loginName", loginName},
+		{"fv", "4"},
+		{"clientId", "1003"},
+		{"eMode", "1"},
+		{"loginFailureUrl", ""},
+		{"loginSuccessUrl", ""},
+		{"verifyCode", ""},
+		{"version", "1.0"},
+		{"scene", strconv.Itoa(scene)},
+	}
+	var b strings.Builder
+	b.WriteString("<object>")
+	for _, f := range fields {
+		b.WriteString(`<string name="` + f[0] + `">` + y139EscapeXML(f[1]) + `</string>`)
+	}
+	b.WriteString("</object>")
+
+	u := y139MailSMS + "?func=" + url.QueryEscape("login:sendSmsCodeByScene") + "&cguid=" + strconv.FormatInt(time.Now().UnixMilli(), 10)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, strings.NewReader(b.String()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Cookie", pre.Cookies)
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+	req.Header.Set("User-Agent", "okhttp/4.12.0")
+	resp, err := s.tyBusinessClient().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	parsed := y139ParseMailLogin(body)
+	if parsed.Code == "S_OK" {
+		s.Log.Info(logger.ModCloud139, "[移动云盘] 短信验证码已发送（scene=%d，账号=%s）", scene, pre.Username)
+		return nil
+	}
+	switch parsed.Code {
+	case "PML401010021", "PML401010022":
+		return fmt.Errorf("需要先完成图形验证码才能发送短信（code=%s），请在浏览器登录一次 mail.10086.cn", parsed.Code)
+	case "PML404010001":
+		return errors.New("短信验证码发送过于频繁，请稍后再试")
+	case "PML401010002":
+		return errors.New("短信验证参数被拒绝，请检查账号后重试")
+	}
+	return fmt.Errorf("发送短信验证码失败（code=%s %s）", parsed.Code, parsed.Summary)
+}
+
+// y139VerifySMS 用短信验证码完成邮箱登录，返回 sid 与合并后的 Cookie。
+func (s *Services) y139VerifySMS(ctx context.Context, pre *y139SMSState, code string) (string, string, error) {
+	scene, ok := y139RiskScene(pre.RiskCode)
+	if !ok {
+		return "", pre.Cookies, fmt.Errorf("风控码 %s 不支持短信验证", pre.RiskCode)
+	}
+	loginName, err := y139EncryptLoginName(pre.Username)
+	if err != nil {
+		return "", pre.Cookies, err
+	}
+	// 短信验证码按「密码」规则参与登录：SHA1("fetion.com.cn:<code>")
+	pwdHash := y139SHA1("fetion.com.cn:" + code)
+	fields := [][2]string{
+		{"clientId", "1003"},
+		{"version", "4"},
+		{"loginType", "0"},
+		{"authType", "2"},
+		{"loginName", loginName},
+		{"eMode", "1"},
+		{"loginPassword", pwdHash},
+		{"createAutoLoginSecretKey", "1"},
+		{"verifyCode", ""},
+		{"verifyAgentId", ""},
+		{"reqFrom", "3"},
+		{"needWCookie", "1"},
+	}
+	if pre.RiskCode == "MW0016" {
+		fields = append(fields, [2]string{"pwdType", "1"})
+	}
+	var b strings.Builder
+	b.WriteString("<object>")
+	for _, f := range fields {
+		b.WriteString(`<string name="` + f[0] + `">` + y139EscapeXML(f[1]) + `</string>`)
+	}
+	b.WriteString("</object>")
+
+	u := y139MailSMS + "?func=" + url.QueryEscape("/login/inlogin.action") + "&cguid=" + strconv.FormatInt(time.Now().UnixMilli(), 10)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, strings.NewReader(b.String()))
+	if err != nil {
+		return "", pre.Cookies, err
+	}
+	req.Header.Set("Cookie", pre.Cookies)
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+	req.Header.Set("User-Agent", "okhttp/4.12.0")
+	resp, err := s.tyBusinessClient().Do(req)
+	if err != nil {
+		return "", pre.Cookies, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	merged := y139MergeCookies(pre.Cookies, resp.Cookies())
+
+	parsed := y139ParseMailLogin(body)
+	if parsed.Code != "S_OK" {
+		return "", merged, fmt.Errorf("短信验证失败（code=%s %s）", parsed.Code, parsed.Summary)
+	}
+	sid := ""
+	if parsed.LoginSuccessURL != "" {
+		if u2, perr := url.Parse(parsed.LoginSuccessURL); perr == nil {
+			sid = u2.Query().Get("sid")
+		}
+	}
+	if sid == "" {
+		sid = y139CookieValue(merged, "Os_SSo_Sid")
+		if sid == "" {
+			sid = y139CookieValue(merged, "sid")
+		}
+	}
+	if sid == "" {
+		return "", merged, errors.New("短信验证成功但未返回 sid")
+	}
+	s.Log.Info(logger.ModCloud139, "[移动云盘] 短信验证通过（scene=%d）", scene)
+	return sid, merged, nil
+}
+
+// y139EncryptLoginName 用邮箱公钥加密账号（发短信/验证短信接口要求）。
+func y139EncryptLoginName(account string) (string, error) {
+	der, err := base64.StdEncoding.DecodeString(y139MailPub)
+	if err != nil {
+		return "", fmt.Errorf("邮箱公钥解码失败: %w", err)
+	}
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return "", fmt.Errorf("邮箱公钥解析失败: %w", err)
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return "", errors.New("邮箱公钥不是 RSA")
+	}
+	enc, err := rsa.EncryptPKCS1v15(crand.Reader, rsaPub, []byte(account))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(enc), nil
+}
+
+// y139ParseMailLogin 解析邮箱登录接口响应（兼容 JSON 与 JS 变量风格）。
+func y139ParseMailLogin(body []byte) struct {
+	Code            string
+	Summary         string
+	LoginSuccessURL string
+} {
+	out := struct {
+		Code            string
+		Summary         string
+		LoginSuccessURL string
+	}{}
+	var parsed struct {
+		Code    string `json:"code"`
+		Summary string `json:"summary"`
+		Var     struct {
+			LoginSuccessURL string `json:"loginSuccessUrl"`
+		} `json:"var"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && (parsed.Code != "" || parsed.Summary != "" || parsed.Var.LoginSuccessURL != "") {
+		out.Code = parsed.Code
+		out.Summary = parsed.Summary
+		out.LoginSuccessURL = parsed.Var.LoginSuccessURL
+		return out
+	}
+	out.Code = y139RegexString(body, `[\"]?code[\"]?\s*:\s*[\"]([^\"]+)`)
+	out.Summary = y139RegexString(body, `[\"]?summary[\"]?\s*:\s*[\"]([^\"]+)`)
+	out.LoginSuccessURL = y139RegexString(body, `[\"]?loginSuccessUrl[\"]?\s*:\s*[\"]([^\"]+)`)
+	return out
+}
+
+func y139RegexString(body []byte, pattern string) string {
+	re := regexp.MustCompile(pattern)
+	if m := re.FindSubmatch(body); len(m) == 2 {
+		return string(m[1])
+	}
+	return ""
 }
 
 // y139LoginBySID 用已有 sid（来自邮箱 Cookie）直接换取 Authorization。
@@ -296,11 +619,19 @@ func (s *Services) y139Step1(ctx context.Context, username, password, cookies st
 	if loc != "" {
 		if u, perr := url.Parse(loc); perr == nil {
 			sid = u.Query().Get("sid")
-			if sid == "" {
-				// 风控/短信验证场景会把 code 带在跳转里
-				if code := u.Query().Get("code"); code != "" {
-					return "", merged, fmt.Errorf("邮箱登录触发风控校验（code=%s），请在浏览器完成一次登录后再试", code)
+		}
+		// 10086 邮箱登录风控：ec 参数是错误码，S025/S035/MW0016/PML401010062 可走短信验证
+		if sid == "" {
+			if risk := y139RiskCodeOf(loc); risk != "" {
+				scene, ok := y139RiskScene(risk)
+				if !ok {
+					return "", merged, fmt.Errorf("邮箱登录失败（ec=%s，暂不支持自动验证）：请在浏览器登录 mail.10086.cn 后把完整 Cookie 贴到「邮箱 Cookie」重试", risk)
 				}
+				y139SMSMu.Lock()
+				y139SMSPre = &y139SMSState{RiskCode: risk, Username: username, Cookies: merged}
+				y139SMSMu.Unlock()
+				s.Log.Warn(logger.ModCloud139, "[移动云盘] 邮箱登录触发风控 ec=%s（短信场景 %d）", risk, scene)
+				return "", merged, &y139RiskError{RiskCode: risk, Scene: scene}
 			}
 		}
 	}

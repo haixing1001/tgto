@@ -375,3 +375,114 @@ func TestY139SanitizeURL(t *testing.T) {
 		t.Fatalf("脱敏结果不符: %s", out)
 	}
 }
+
+// TestYun139SMSLoginFlow 触发风控（ec=S035）→ 自动发短信 → 输码登录成功。
+func TestYun139SMSLoginFlow(t *testing.T) {
+	s := newY139TestServices(t)
+	if _, err := s.SaveConfig(Drive139, map[string]any{
+		"username": "13700000000", "password": "secret",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	key1, _ := hex.DecodeString(y139Key1)
+	key2, _ := hex.DecodeString(y139Key2)
+
+	var gotSmsPwdHash string
+	mux := http.NewServeMux()
+	// step1：返回风控 ec=S035
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "https://mail.10086.cn/default.html?ec=S035&u=x")
+		w.WriteHeader(http.StatusFound)
+	})
+	// 邮箱短信接口：按 func 分发
+	mux.HandleFunc("/sms", func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("func") {
+		case "login:sendSmsCodeByScene":
+			if r.Header.Get("Content-Type") != "application/xml; charset=utf-8" {
+				t.Errorf("短信接口 Content-Type = %q", r.Header.Get("Content-Type"))
+			}
+			_, _ = w.Write([]byte(`{"code":"S_OK","summary":"发送成功"}`))
+		case "/login/inlogin.action":
+			body, _ := io.ReadAll(r.Body)
+			raw := string(body)
+			want := "loginPassword\">" + y139SHA1("fetion.com.cn:654321") + "<"
+			if !strings.Contains(raw, want) {
+				t.Errorf("短信验证码哈希不符，应按密码规则 SHA1: %s", truncate(raw, 200))
+			}
+			gotSmsPwdHash = want
+			// 真实流程：短信验证通过后服务端会下发 RMKEY 等登录 Cookie
+			w.Header().Add("Set-Cookie", "RMKEY=rm-sms; Path=/")
+			w.Header().Add("Set-Cookie", "Os_SSo_Sid=SMS-SID-1; Path=/")
+			_, _ = w.Write([]byte(`{"code":"S_OK","var":{"loginSuccessUrl":"https://mail.10086.cn/?sid=SMS-SID-1"}}`))
+		default:
+			t.Errorf("unexpected sms func: %s", r.URL.RawQuery)
+		}
+	})
+	mux.HandleFunc("/artifact", func(w http.ResponseWriter, r *http.Request) {
+		if gotSmsPwdHash == "" {
+			t.Error("未完成短信验证就进入了 artifact 步骤")
+		}
+		if r.URL.Query().Get("sid") != "SMS-SID-1" {
+			t.Errorf("sid = %q", r.URL.Query().Get("sid"))
+		}
+		_, _ = w.Write([]byte(`{"var":{"artifact":"ART-SMS"}}`))
+	})
+	mux.HandleFunc("/thirdlogin", func(w http.ResponseWriter, r *http.Request) {
+		exp := time.Now().Add(60 * 24 * time.Hour).UnixMilli()
+		layer2 := `{"authToken":"a|b|c|` + itoa64(exp) + `|z","account":"13700000000","userDomainId":"ud-s"}`
+		enc2, _ := y139AESCBCEncrypt([]byte(layer2), key2, make([]byte, aes.BlockSize))
+		iv := make([]byte, aes.BlockSize)
+		_, _ = crand.Read(iv)
+		enc1, _ := y139AESCBCEncrypt([]byte(`{"data":"`+hex.EncodeToString(enc2)+`"}`), key1, iv)
+		_, _ = w.Write([]byte(base64.StdEncoding.EncodeToString(append(iv, enc1...))))
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldLogin, oldSMS, oldArtifact, oldThird := y139MailLoginBase, y139MailSMS, y139ArtifactBase, y139ThirdLoginBase
+	y139MailLoginBase, y139MailSMS, y139ArtifactBase, y139ThirdLoginBase = srv.URL+"/login", srv.URL+"/sms", srv.URL+"/artifact", srv.URL+"/thirdlogin"
+	t.Cleanup(func() {
+		y139MailLoginBase, y139MailSMS, y139ArtifactBase, y139ThirdLoginBase = oldLogin, oldSMS, oldArtifact, oldThird
+	})
+
+	// 第一次登录：触发风控 → 自动发短信
+	res, err := s.Yun139Login(context.Background())
+	if err != nil {
+		t.Fatalf("触发风控不应报错: %v", err)
+	}
+	if res["sms_required"] != true || res["risk_code"] != "S035" {
+		t.Fatalf("应返回 sms_required: %v", res)
+	}
+
+	// 重发验证码
+	if _, err := s.Yun139SMSSend(context.Background()); err != nil {
+		t.Fatalf("重发验证码失败: %v", err)
+	}
+
+	// 输码登录
+	status, err := s.Yun139LoginSMS(context.Background(), "654321")
+	if err != nil {
+		t.Fatalf("短信登录失败: %v", err)
+	}
+	if status["logged_in"] != true || status["account"] != "13700000000" {
+		t.Fatalf("短信登录后状态: %v", status)
+	}
+	auth, _ := s.loadY139Auth()
+	if auth == nil || auth.Authorization == "" {
+		t.Fatal("短信登录后令牌未落盘")
+	}
+}
+
+func TestY139ParseMailLogin(t *testing.T) {
+	// JSON 风格
+	p := y139ParseMailLogin([]byte(`{"code":"S_OK","var":{"loginSuccessUrl":"https://mail.10086.cn/?sid=abc"}}`))
+	if p.Code != "S_OK" || p.LoginSuccessURL != "https://mail.10086.cn/?sid=abc" {
+		t.Fatalf("JSON 解析: %+v", p)
+	}
+	// JS 变量风格
+	p = y139ParseMailLogin([]byte(`var result = {"code":"S_FAIL","summary":"密码错误"}`))
+	if p.Code != "S_FAIL" || p.Summary != "密码错误" {
+		t.Fatalf("JS 解析: %+v", p)
+	}
+}

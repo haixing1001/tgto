@@ -102,6 +102,7 @@ func NewRouter(svc *service.Services, log *logger.RingLogger, static StaticConfi
 			// 移动云盘（139）账号密码登录 / 令牌续期
 			secured.GET("/drive/yun139/status", h.handleYun139Status)
 			secured.POST("/drive/yun139/login", h.handleYun139Login)
+			secured.POST("/drive/yun139/sms/send", h.handleYun139SMSSend)
 			secured.POST("/drive/yun139/verify", h.handleYun139Verify)
 			secured.POST("/drive/yun139/clear", h.handleYun139Clear)
 			secured.GET("/drive/yun139/files", h.handleYun139Files)
