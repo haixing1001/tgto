@@ -17,7 +17,7 @@ type ShareLink struct {
 	Raw      string `json:"raw"`
 	URL      string `json:"url"`
 	Code     string `json:"code"`
-	Drive    string `json:"drive"` // cloud139 / cloud123 / guangya / tianyi
+	Drive    string `json:"drive"` // cloud139 / guangya / tianyi
 	ShareID  string `json:"share_id"`
 	Host     string `json:"host"`
 }
@@ -25,7 +25,6 @@ type ShareLink struct {
 // 常见链接写法：域名/s/xxxxx、域名/s/xxxxx#提取码、链接 + 空格 + 提取码
 var (
 	rePan139   = regexp.MustCompile(`(?i)(yun\.139\.com|caiyun\.139\.com|139\.com)`)
-	rePan123   = regexp.MustCompile(`(?i)(123pan\.com|123\.com|123pan)`)
 	rePanGY    = regexp.MustCompile(`(?i)(guangya|gygd|guanying)`)
 	rePanTY    = regexp.MustCompile(`(?i)(cloud\.189\.cn|189\.cn|tianyi)`)
 	reAnyURL   = regexp.MustCompile(`https?://[^\s"'<>]+`)
@@ -97,14 +96,12 @@ func ParseShareLink(raw string) (*ShareLink, error) {
 	switch {
 	case rePan139.MatchString(host):
 		link.Drive = Drive139
-	case rePan123.MatchString(host):
-		link.Drive = Drive123
 	case rePanGY.MatchString(host):
 		link.Drive = DriveGY
 	case rePanTY.MatchString(host):
 		link.Drive = DriveTianYi
 	default:
-		return nil, fmt.Errorf("无法识别网盘类型（支持 移动云盘 / 123云盘 / 光鸭云盘 / 天翼云盘）: %s", host)
+		return nil, fmt.Errorf("无法识别网盘类型（支持 移动云盘 / 光鸭云盘 / 天翼云盘）: %s", host)
 	}
 	if shareID == "" {
 		return nil, fmt.Errorf("链接中未找到分享 ID: %s", parsed.String())
@@ -170,7 +167,7 @@ func (s *Services) SubmitTransfer(ctx context.Context, req TransferSubmitRequest
 func (s *Services) defaultTarget(drive string) string {
 	cfg := s.GetConfig(drive)
 	switch drive {
-	case Drive123, DriveTianYi, DriveGY:
+	case DriveTianYi, DriveGY:
 		return orDefault(toString(cfg["target_dir"]), "/媒体库")
 	default:
 		return orDefault(toString(cfg["movie_dir"]), "/媒体库/电影")

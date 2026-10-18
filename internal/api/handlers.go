@@ -128,7 +128,7 @@ func (h *Handlers) handleMockLog(c *gin.Context) {
 	if req.Count > 20 {
 		req.Count = 20
 	}
-	modules := []string{logger.ModSystem, logger.ModScheduler, logger.ModCloud139, logger.ModCloud123, logger.ModOrganizer, logger.ModSTRM, logger.ModTransfer}
+	modules := []string{logger.ModSystem, logger.ModScheduler, logger.ModCloud139, logger.ModOrganizer, logger.ModSTRM, logger.ModTransfer}
 	messages := []string{
 		"开始扫描频道新消息",
 		"分享链接解析完成，进入转存队列",

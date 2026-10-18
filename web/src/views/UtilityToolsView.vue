@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <h2 class="text-lg font-bold mb-1">实用工具</h2>
-    <p class="text-xs text-slate-400 mb-5">命令别名、AI 识别、发布组白名单、限速、TMDB 替代源与正则映射</p>
+    <p class="text-xs text-slate-400 mb-5">命令别名、AI 识别、发布组白名单、TMDB 替代源与正则映射</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       <!-- 1. 命令调整 -->
@@ -47,22 +47,7 @@
         </div>
       </div>
 
-      <!-- 4. 123 云盘 API 限速 -->
-      <div class="card p-5 flex flex-col">
-        <div>
-          <h3 class="text-sm font-semibold">🚦 123 云盘 API 限速</h3>
-          <p class="text-xs text-slate-400 mt-1">令牌桶 QPS + 突发上限（实时生效）</p>
-        </div>
-        <div class="mt-3 grid grid-cols-2 gap-3 flex-1">
-          <div><label class="label">每秒请求上限 QPS</label><input v-model.number="limiter.qps" type="number" min="1" class="input !py-1.5 text-xs" /></div>
-          <div><label class="label">突发并发上限 Burst</label><input v-model.number="limiter.burst" type="number" min="1" class="input !py-1.5 text-xs" /></div>
-        </div>
-        <div class="flex justify-end mt-3">
-          <button class="btn-primary text-xs" @click="saveLimiter">应用限速</button>
-        </div>
-      </div>
-
-      <!-- 5. TMDB 替代源设置 -->
+      <!-- 4. TMDB 替代源设置 -->
       <div class="card p-5 flex flex-col">
         <div>
           <h3 class="text-sm font-semibold">🖼️ TMDB 替代源设置</h3>
@@ -77,7 +62,7 @@
         </div>
       </div>
 
-      <!-- 6. TMDB 正则映射 -->
+      <!-- 5. TMDB 正则映射 -->
       <div class="card p-5 flex flex-col">
         <div>
           <h3 class="text-sm font-semibold">🎯 TMDB 正则映射</h3>
@@ -89,7 +74,7 @@
         </div>
       </div>
 
-      <!-- 7. 移动云盘分享 STRM 失效检测 -->
+      <!-- 6. 移动云盘分享 STRM 失效检测 -->
       <div class="card p-5 flex flex-col md:col-span-2 xl:col-span-1">
         <div>
           <h3 class="text-sm font-semibold">🔎 移动云盘分享 STRM 失效检测</h3>
@@ -132,7 +117,6 @@ const tools = reactive({
   share_strm_path: '/app/strm/cloud139_share'
 })
 const rulesText = ref('')
-const limiter = reactive({ qps: 2, burst: 4 })
 const checking = ref(false)
 const checkResult = ref(null)
 
@@ -141,8 +125,6 @@ onMounted(() => {
   Object.assign(tools, cfg)
   const rules = cfg.regex_rules || []
   rulesText.value = rules.map((r) => `${r.pattern || ''}|${r.tmdb_id || ''}|${r.season || ''}`).join('\n')
-  limiter.qps = (state.config.cloud123 || {}).qps || 2
-  limiter.burst = (state.config.cloud123 || {}).burst || 4
 })
 
 async function saveTools() {
@@ -154,14 +136,6 @@ async function saveTools() {
   }
 }
 
-async function saveLimiter() {
-  try {
-    await saveConfig('cloud123', { qps: limiter.qps, burst: limiter.burst })
-    toast('success', '限速已更新', `QPS=${limiter.qps} Burst=${limiter.burst}（实时生效）`)
-  } catch (e) {
-    toast('error', '更新失败', e.message)
-  }
-}
 
 async function saveRules() {
   const rules = rulesText.value

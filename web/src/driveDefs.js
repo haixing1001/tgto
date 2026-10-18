@@ -113,72 +113,6 @@ export const DRIVES = {
     ]
   },
 
-  cloud123: {
-    key: 'cloud123',
-    route: 'drive-123',
-    name: '123云盘',
-    icon: '🟦',
-    color: '#22c55e',
-    submenus: [
-      {
-        key: 'account',
-        title: '123 账号配置',
-        cards: [
-          {
-            key: 'account',
-            title: '123 账号配置',
-            fields: [
-              { key: 'username', label: '登录账号', type: 'text' },
-              { key: 'password', label: '登录密码', type: 'password' }
-            ]
-          }
-        ]
-      },
-      {
-        key: 'monitor',
-        title: '频道监控配置',
-        cards: [
-          {
-            key: 'monitor',
-            title: '频道监控配置',
-            fields: [
-              { key: 'monitor_channels', label: '监控频道', type: 'tags', placeholder: '@Channel1, @Channel2', span: 2 },
-              { key: 'target_dir', label: '默认转存目录', type: 'text' },
-              { key: 'qps', label: 'API 限速 QPS', type: 'number' },
-              { key: 'burst', label: '突发 Burst', type: 'number' }
-            ],
-            note: '限速参数同时可在 实用工具-123云盘API限速 中实时调整。'
-          }
-        ]
-      },
-      {
-        key: 'organize_strm',
-        title: '影视整理与 STRM 生成',
-        cards: [
-          {
-            key: 'organize',
-            title: '影视整理与 STRM 生成',
-            fields: [
-              { key: 'organize_enabled', label: '启用整理', type: 'switch' },
-              { key: 'movie_dir', label: '电影归档目录', type: 'text' },
-              { key: 'tv_dir', label: '剧集归档目录', type: 'text' },
-              { key: 'music_dir', label: '无损音乐归档目录', type: 'text' },
-              { key: 'local_media_dir', label: '本地媒体目录（源）', type: 'text' },
-              { key: 'strm_enabled', label: '启用 STRM 生成', type: 'switch' },
-              { key: 'strm_dir', label: 'STRM 输出目录', type: 'text' },
-              { key: 'strm_url_prefix', label: 'STRM 内容 URL 前缀', type: 'text', span: 2 },
-              { key: 'local_organize_dir', label: '本地整理目录（沙盒）', type: 'text', span: 2 }
-            ],
-            actions: [
-              { key: 'strm_incremental', label: '立即增量生成 STRM', mode: 'incremental', type: 'primary' },
-              { key: 'strm_full', label: '全量重建 STRM', mode: 'full', type: 'danger' }
-            ]
-          }
-        ]
-      }
-    ]
-  },
-
   guangya: {
     key: 'guangya',
     route: 'drive-guangya',
@@ -388,7 +322,7 @@ export const DRIVES = {
   }
 }
 
-const DRIVE_PREFIX = { cloud139: 'drive-139', cloud123: 'drive-123', guangya: 'drive-guangya', tianyi: 'drive-tianyi' }
+const DRIVE_PREFIX = { cloud139: 'drive-139', guangya: 'drive-guangya', tianyi: 'drive-tianyi' }
 const PREFIX_DRIVE = Object.fromEntries(Object.entries(DRIVE_PREFIX).map(([d, p]) => [p, d]))
 
 // 每个网盘的账号凭证字段：用于主导航条目的「就绪绿灯」判定
@@ -396,7 +330,6 @@ const PREFIX_DRIVE = Object.fromEntries(Object.entries(DRIVE_PREFIX).map(([d, p]
 //   - all：所有字段均非空才视为已配置
 const DRIVE_CREDENTIALS = {
   cloud139: { keys: ['username', 'password'], mode: 'all', alt: ['authorization'] },
-  cloud123: { keys: ['username', 'password'], mode: 'all' },
   guangya: { keys: ['phone'], mode: 'single' },
   tianyi: { keys: ['account'], mode: 'single' }
 }
@@ -417,7 +350,7 @@ for (const [driveKey, def] of Object.entries(DRIVES)) {
 //   alt 为「替代凭证」：任一非空即视为已配置（移动云盘可用令牌单独登录）；
 //   优先用后端 /api/state 返回的真实登录态 drive_status（天翼是扫码会话，
 //   登录只写 account、不写 password，用凭证字段判断永远不亮）；
-//   没有该字段时退回凭证配置判断（移动云盘账号密码 / 123 账号密码 / 光鸭手机号）。
+//   没有该字段时退回凭证配置判断（移动云盘账号密码 / 光鸭手机号）。
 export function driveReady(driveKey, config, driveStatus) {
   const def = DRIVES[driveKey]
   if (!def) return false

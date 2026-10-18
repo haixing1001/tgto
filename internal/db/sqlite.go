@@ -64,7 +64,7 @@ type OrganizeRow struct {
 var DriveNames = map[string]string{
 	"cloud139":  "移动云盘",
 	"cloud115":  "115网盘（历史数据）",
-	"cloud123":  "123云盘",
+	"cloud123":  "123云盘（已下线）",
 	"guangya":   "光鸭云盘",
 	"tianyi":    "天翼云盘",
 }
@@ -198,23 +198,6 @@ func DefaultConfigs() map[string]map[string]any {
 			"qps":                2,
 			"burst":              4,
 		},
-		"cloud123": {
-			"username":          "",
-			"password":          "",
-			"target_dir":        "/0/媒体库",
-			"monitor_channels":  "",
-			"organize_enabled":  true,
-			"movie_dir":         "/0/媒体库/电影",
-			"tv_dir":            "/0/媒体库/剧集",
-			"music_dir":         "/0/媒体库/无损音乐",
-			"local_organize_dir": "/app/data/organize/cloud123",
-			"local_media_dir":    "/app/data/media/cloud123",
-			"strm_enabled":      true,
-			"strm_dir":          "/app/strm/cloud123",
-			"strm_url_prefix":   "http://127.0.0.1:9058/media/cloud123",
-			"qps":                2,
-			"burst":              4,
-		},
 		"guangya": {
 			"phone":            "",
 			"account":          "",
@@ -267,11 +250,6 @@ func DefaultConfigs() map[string]map[string]any {
 			"guanying_password": "",
 		},
 		"organize_queue": {
-			"cloud123": []any{
-				"Shogun.2024.S01E05.2160p.DSNP.WEB-DL.DDP5.1.DV.HEVC-HHWEB.mkv",
-				"沙丘2.2024.2160p.UHD.BluRay.REMUX.HDR.HEVC.TrueHD.7.1.Atmos-NBGY.mkv",
-				"Jay.Chou.-.Fantasy.2001.FLAC/02.简单爱.flac",
-			},
 			"guangya": []any{
 				"繁花.2023.S01E02.1080p.WEB-DL.H264.AAC-HDS.mkv",
 				"陈奕迅.-.Rice.And.Shine.2014.FLAC/05.娱乐天空.flac",
@@ -306,8 +284,6 @@ func (d *DB) seed() error {
 	now := time.Now()
 	if transferCount == 0 {
 		seeds := []TransferRow{
-			{Drive: "cloud123", Channel: "@MovieHeaven", ShareLink: "https://123pan.com/s/a1B2c3D4", Code: "8x7k", TargetDir: "/0/媒体库/剧集", Status: "成功", Message: "转存成功，共 24 个文件", Result: "已入库"},
-			{Drive: "cloud123", Channel: "@AniShare", ShareLink: "https://123pan.com/s/e5F6g7H8", Code: "2m9p", TargetDir: "/0/媒体库/动漫", Status: "成功", Message: "转存成功，共 12 个文件", Result: "已入库"},
 			{Drive: "cloud139", Channel: "@PTShare", ShareLink: "https://yun.139.com/shareweb/#/w/i/2qieM8ZkLpQ", Code: "", TargetDir: "/媒体库/电影", Status: "成功", Message: "转存成功，共 3 个文件", Result: "已入库"},
 			{Drive: "cloud139", Channel: "@LosslessMusic", ShareLink: "https://yun.139.com/shareweb/#/w/i/2qieN5tRbVc", Code: "k5tt", TargetDir: "/媒体库/无损音乐", Status: "成功", Message: "转存成功，共 1 个目录", Result: "已入库"},
 			{Drive: "guangya", Channel: "@GygdShare", ShareLink: "https://guangya.com/s/gy7k9m2x", Code: "gg22", TargetDir: "/媒体库/转存", Status: "跳过", Message: "分享链接已存在于监控历史，执行去重跳过", Result: "已去重"},
@@ -323,9 +299,6 @@ func (d *DB) seed() error {
 
 	if organizeCount == 0 {
 		seeds := []OrganizeRow{
-			{Drive: "cloud123", Kind: "tv", OriginalName: "Shogun.2024.S01E05.2160p.DSNP.WEB-DL.DDP5.1.DV.HEVC-HHWEB.mkv", TargetName: "幕府将军 (2024) - S01E05 - 2160p WEB-DL HEVC.mkv", TargetPath: "/0/媒体库/剧集/幕府将军 (2024) [tmdbid=126308]/Season 01/幕府将军 (2024) - S01E05 - 2160p WEB-DL HEVC.mkv", TMDBID: "126308", Status: "成功"},
-			{Drive: "cloud123", Kind: "movie", OriginalName: "沙丘2.2024.2160p.UHD.BluRay.REMUX.HDR.HEVC.TrueHD.7.1.Atmos-NBGY.mkv", TargetName: "沙丘2 (2024) - 2160p BluRay REMUX HEVC.mkv", TargetPath: "/0/媒体库/电影/沙丘2 (2024) [tmdbid=693134]/沙丘2 (2024) - 2160p BluRay REMUX HEVC.mkv", TMDBID: "693134", Status: "成功"},
-			{Drive: "cloud123", Kind: "music", OriginalName: "Jay.Chou.-.Fantasy.2001.FLAC/02.简单爱.flac", TargetName: "02 - Jay Chou - 简单爱.flac", TargetPath: "/0/媒体库/无损音乐/Jay Chou - Fantasy (2001) [FLAC]/02 - Jay Chou - 简单爱.flac", MBID: "b8c2f6a1-3d4e-4f5a-9b6c-7d8e9f0a1b2c", Status: "成功"},
 			{Drive: "guangya", Kind: "movie", OriginalName: "繁花.2023.S01E02.1080p.WEB-DL.H264.AAC-HDS.mkv", TargetName: "繁华 (2023) - S01E02 - 1080p WEB-DL H264.mkv", TargetPath: "/媒体库/剧集/繁华 (2023) [tmdbid=225372]/Season 01/繁华 (2023) - S01E02 - 1080p WEB-DL H264.mkv", TMDBID: "225372", Status: "成功"},
 			{Drive: "guangya", Kind: "music", OriginalName: "陈奕迅.-.Rice.And.Shine.2014.FLAC/05.娱乐天空.flac", TargetName: "05 - 陈奕迅 - 娱乐天空.flac", TargetPath: "/媒体库/无损音乐/陈奕迅 - Rice And Shine (2014) [FLAC]/05 - 陈奕迅 - 娱乐天空.flac", MBID: "c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f", Status: "成功"},
 			{Drive: "cloud139", Kind: "movie", OriginalName: "漫长的季节.2023.S01E04.2160p.WEB-DL.DDP5.1.Atmos.H.265-HHWEB.mkv", TargetName: "漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TargetPath: "/媒体库/剧集/漫长的季节 (2023) [tmdbid=225372]/Season 01/漫长的季节 (2023) - S01E04 - 2160p WEB-DL H265.mkv", TMDBID: "225372", Status: "成功"},

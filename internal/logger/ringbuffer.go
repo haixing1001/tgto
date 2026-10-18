@@ -27,7 +27,6 @@ const (
 	ModSystem    = "System"
 	ModScheduler = "Scheduler"
 	ModCloud139  = "Cloud139"
-	ModCloud123  = "Cloud123"
 	ModGuangYa   = "CloudGuangYa"
 	ModTianYi    = "Tianyi"
 	ModOrganizer = "Organizer"

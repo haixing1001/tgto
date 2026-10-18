@@ -83,7 +83,7 @@
         <div class="text-xs text-slate-400">目标影片：<b class="text-slate-700 dark:text-slate-200">{{ activeItem.title }}</b>（TMDB: {{ activeItem.tmdb_id || '-' }}）</div>
         <div>
           <label class="label">分享链接（粘贴该影片的网盘分享地址）</label>
-          <input v-model="transferForm.link" class="input" placeholder="https://123pan.com/s/xxxxxxx" />
+          <input v-model="transferForm.link" class="input" placeholder="https://yun.139.com/shareweb/#/w/i/xxxxxxx" />
         </div>
         <div>
           <label class="label">提取码（可选）</label>

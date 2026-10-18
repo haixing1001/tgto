@@ -140,10 +140,8 @@ import { fmtTime, statusBadgeClass, toast } from '../store.js'
 import { api } from '../api.js'
 import ModalDialog from '../components/ModalDialog.vue'
 
-// 7 个子分类 -> 后端查询参数
+// 6 个子分类 -> 后端查询参数
 const tabs = [
-  { key: 'cloud123', label: '123云盘', drive: 'cloud123', kind: '', music: false },
-  { key: 'cloud123-music', label: '123云盘音乐', drive: 'cloud123', kind: 'music', music: true },
   { key: 'guangya', label: '光鸭云盘', drive: 'guangya', kind: '', music: false },
   { key: 'guangya-music', label: '光鸭云盘音乐', drive: 'guangya', kind: 'music', music: true },
   { key: 'cloud139', label: '移动云盘', drive: 'cloud139', kind: '', music: false },
@@ -151,7 +149,7 @@ const tabs = [
   { key: 'cloud139-share', label: '移动云盘分享', drive: 'cloud139', kind: 'share', music: false }
 ]
 
-const activeTab = ref('cloud123')
+const activeTab = ref('cloud139')
 const status = ref('all')
 const keyword = ref('')
 const page = ref(1)

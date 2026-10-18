@@ -2,7 +2,8 @@ package service
 
 import "testing"
 
-// 分享链接识别测试：移动云盘（139）取代原 115，且 #/w/i/ 路由不能被当成提取码。
+// 分享链接识别测试：移动云盘（139）+ 天翼，且 #/w/i/ 路由不能被当成提取码。
+// 123 云盘已下线，不应再被识别。
 func TestParseShareLinkMobile139(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -40,18 +41,11 @@ func TestParseShareLinkMobile139(t *testing.T) {
 			code:    "",
 		},
 		{
-			name:    "123 带空格提取码",
-			in:      "https://123pan.com/s/a1B2c3D4 8x7k",
-			drive:   Drive123,
-			shareID: "a1B2c3D4",
-			code:    "8x7k",
-		},
-		{
-			name:    "123 带 # 提取码",
-			in:      "https://123pan.com/s/a1B2c3D4#8x7k",
-			drive:   Drive123,
-			shareID: "a1B2c3D4",
-			code:    "8x7k",
+			name:    "链接后跟 #提取码 写法",
+			in:      "https://yun.139.com/w/i/Zz9Kk8Mm #zz88",
+			drive:   Drive139,
+			shareID: "Zz9Kk8Mm",
+			code:    "zz88",
 		},
 		{
 			name:    "天翼分享",
@@ -82,8 +76,13 @@ func TestParseShareLinkMobile139(t *testing.T) {
 }
 
 func TestParseShareLinkUnsupported(t *testing.T) {
-	if _, err := ParseShareLink("https://example.com/s/abc123"); err == nil {
-		t.Fatal("不支持的域名应报错")
+	for _, in := range []string{
+		"https://example.com/s/abc123",
+		"https://123pan.com/s/a1B2c3D4 8x7k", // 123 云盘已下线
+	} {
+		if _, err := ParseShareLink(in); err == nil {
+			t.Fatalf("%s 应报错（不支持的网盘）", in)
+		}
 	}
 }
 

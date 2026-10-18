@@ -28,8 +28,8 @@ check('无 drive_status 且无账号 → 不亮',
 check('移动云盘账号+密码齐全 → 绿点', driveReady('cloud139', { cloud139: { username: '13800138000', password: 'p' } }) === true)
 check('移动云盘只有账号 → 不亮', driveReady('cloud139', { cloud139: { username: '13800138000', password: '' } }) === false)
 check('移动云盘仅授权令牌 → 绿点', driveReady('cloud139', { cloud139: { authorization: 'tok' } }) === true)
-check('123 账号+密码齐全 → 绿点', driveReady('cloud123', { cloud123: { username: 'u', password: 'p' } }) === true)
-check('123 只有账号 → 不亮', driveReady('cloud123', { cloud123: { username: 'u', password: '' } }) === false)
+// 123 云盘已下线：不再出现在 DRIVES 里，判定一律 false
+check('已下线的 123 云盘 → 不亮', driveReady('cloud123', { cloud123: { username: 'u', password: 'p' } }) === false)
 check('光鸭有手机号 → 绿点', driveReady('guangya', { guangya: { phone: '13800000000' } }) === true)
 check('未知网盘 → 不亮', driveReady('nope', {}) === false)
 

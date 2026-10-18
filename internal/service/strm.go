@@ -16,7 +16,7 @@ import (
 
 // STRMRequest STRM 生成请求。
 type STRMRequest struct {
-	DriveType string `json:"drive_type"` // cloud139 / cloud123 / guangya
+	DriveType string `json:"drive_type"` // cloud139 / guangya
 	Mode      string `json:"mode"`       // incremental / full
 }
 
@@ -47,8 +47,8 @@ func (s *Services) GenerateSTRM(ctx context.Context, req STRMRequest) (*STRMResu
 	if mode == "" {
 		mode = "incremental"
 	}
-	if drive != Drive139 && drive != Drive123 && drive != DriveGY {
-		return nil, fmt.Errorf("不支持的网盘类型: %s（支持 cloud139 / cloud123 / guangya）", drive)
+	if drive != Drive139 && drive != DriveGY {
+		return nil, fmt.Errorf("不支持的网盘类型: %s（支持 cloud139 / guangya）", drive)
 	}
 
 	cfg := s.GetConfig(drive)
@@ -281,8 +281,6 @@ func driveDisplayName(drive string) string {
 	switch drive {
 	case Drive139:
 		return "移动云盘"
-	case Drive123:
-		return "123云盘"
 	case DriveGY:
 		return "光鸭云盘"
 	case DriveTianYi:
