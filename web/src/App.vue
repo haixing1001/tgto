@@ -7,19 +7,6 @@
 
     <!-- 后台主界面 -->
     <template v-else>
-      <!-- 顶部首次运行提示横幅 -->
-      <div
-        v-if="!state.firstRunBannerClosed"
-        class="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/30 px-4 py-2 flex items-center gap-3 text-xs"
-      >
-        <span class="text-amber-500 text-base">💡</span>
-        <span class="flex-1 text-amber-800 dark:text-amber-300">
-          请先前往 <b>系统工具 - 全局设置</b> 完成基础设置，然后配置 移动云盘账号、天翼云盘账号或光鸭云盘账号。
-        </span>
-        <button class="btn-primary" @click="navigate('drive-139-account')">去配置云盘</button>
-        <button class="text-amber-500 hover:text-amber-700 px-1" @click="state.firstRunBannerClosed = true">✕</button>
-      </div>
-
       <div class="flex-1 flex min-h-0">
         <!-- 左侧导航 -->
         <aside class="w-56 shrink-0 bg-white dark:bg-panel-dark border-r border-slate-200 dark:border-slate-700 flex flex-col">

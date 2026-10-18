@@ -13,7 +13,6 @@ export const state = reactive({
   logs: [],
   currentView: 'login',
   theme: 'dark',
-  firstRunBannerClosed: false,
   logAutoRefresh: false,
   driveStatus: {},
   toasts: [],
