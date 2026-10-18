@@ -14,21 +14,21 @@ import (
 
 // ShareLink 识别后的分享链接信息。
 type ShareLink struct {
-	Raw      string `json:"raw"`
-	URL      string `json:"url"`
-	Code     string `json:"code"`
-	Drive    string `json:"drive"` // cloud139 / guangya / tianyi
-	ShareID  string `json:"share_id"`
-	Host     string `json:"host"`
+	Raw     string `json:"raw"`
+	URL     string `json:"url"`
+	Code    string `json:"code"`
+	Drive   string `json:"drive"` // cloud139 / guangya / tianyi
+	ShareID string `json:"share_id"`
+	Host    string `json:"host"`
 }
 
 // 常见链接写法：域名/s/xxxxx、域名/s/xxxxx#提取码、链接 + 空格 + 提取码
 var (
-	rePan139   = regexp.MustCompile(`(?i)(yun\.139\.com|caiyun\.139\.com|139\.com)`)
-	rePanGY    = regexp.MustCompile(`(?i)(guangya|gygd|guanying)`)
-	rePanTY    = regexp.MustCompile(`(?i)(cloud\.189\.cn|189\.cn|tianyi)`)
-	reAnyURL   = regexp.MustCompile(`https?://[^\s"'<>]+`)
-	reShareID  = regexp.MustCompile(`(?i)/(?:s|t)/([A-Za-z0-9_-]+)`)
+	rePan139  = regexp.MustCompile(`(?i)(yun\.139\.com|caiyun\.139\.com|139\.com)`)
+	rePanGY   = regexp.MustCompile(`(?i)(guangya|gygd|guanying)`)
+	rePanTY   = regexp.MustCompile(`(?i)(cloud\.189\.cn|189\.cn|tianyi)`)
+	reAnyURL  = regexp.MustCompile(`https?://[^\s"'<>]+`)
+	reShareID = regexp.MustCompile(`(?i)/(?:s|t)/([A-Za-z0-9_-]+)`)
 	// 移动云盘分享：yun.139.com/shareweb/#/w/i/<linkID>、/w/i/<linkID>、?linkID=<id>
 	reShareID139 = regexp.MustCompile(`(?i)(?:/w/i/|linkid=)([A-Za-z0-9_-]{4,})`)
 )
@@ -152,6 +152,19 @@ func (s *Services) SubmitTransfer(ctx context.Context, req TransferSubmitRequest
 		Status:    "成功",
 		Message:   fmt.Sprintf("识别为%s分享 %s，沙盒模式：已完成链接校验与本地登记（配置云盘凭证后将执行远端转存）", driveDisplayName(link.Drive), link.ShareID),
 		Result:    "已登记",
+	}
+	// 移动云盘：登录后执行真实转存（其余网盘仍是登记模式）
+	if link.Drive == Drive139 && s.y139LoggedIn() {
+		msg, terr := s.Yun139Transfer(ctx, link.ShareID, link.Code, target)
+		if terr != nil {
+			row.Status = "失败"
+			row.Result = "失败"
+			row.Message = "移动云盘转存失败: " + terr.Error()
+		} else {
+			row.Status = "成功"
+			row.Result = "已转存"
+			row.Message = msg
+		}
 	}
 	if _, err := s.DB.InsertTransfer(row); err != nil {
 		s.Log.Error(logger.ModTransfer, "写入转存历史失败: %v", err)

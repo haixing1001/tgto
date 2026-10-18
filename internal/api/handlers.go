@@ -191,7 +191,8 @@ func (h *Handlers) handleTransferSubmit(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "分享链接不能为空")
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	// 移动云盘转存要等远端任务完成，给足 3 分钟
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 180*time.Second)
 	defer cancel()
 	row, err := h.svc.SubmitTransfer(ctx, service.TransferSubmitRequest{
 		Link:      req.Link,

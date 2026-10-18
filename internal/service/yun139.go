@@ -1392,3 +1392,9 @@ func y139EscapeXML(s string) string {
 	_ = xml.EscapeText(&buf, []byte(s))
 	return buf.String()
 }
+
+// y139LoggedIn 是否已有可用的移动云盘令牌（用于判断能否执行真实转存）。
+func (s *Services) y139LoggedIn() bool {
+	auth, err := s.loadY139Auth()
+	return err == nil && auth != nil && auth.Authorization != ""
+}
