@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"crypto/aes"
 	crand "crypto/rand"
@@ -170,7 +171,7 @@ func TestYun139LoginFlow(t *testing.T) {
 		// 第二层：authToken/account/userDomainId
 		exp := time.Now().Add(60 * 24 * time.Hour).UnixMilli()
 		layer2 := `{"authToken":"a|b|c|` + itoa64(exp) + `|z","account":"18900000000","userDomainId":"ud-1"}`
-		enc2, err := y139AESCBCEncrypt([]byte(layer2), key2, make([]byte, aes.BlockSize))
+		enc2, err := y139AESECBEncrypt([]byte(layer2), key2)
 		if err != nil {
 			t.Errorf("二次加密失败: %v", err)
 			return
@@ -314,7 +315,7 @@ func TestYun139FastLoginWithCookies(t *testing.T) {
 	mux.HandleFunc("/thirdlogin", func(w http.ResponseWriter, r *http.Request) {
 		exp := time.Now().Add(60 * 24 * time.Hour).UnixMilli()
 		layer2 := `{"authToken":"a|b|c|` + itoa64(exp) + `|z","account":"18900000000","userDomainId":"ud-9"}`
-		enc2, _ := y139AESCBCEncrypt([]byte(layer2), key2, make([]byte, aes.BlockSize))
+		enc2, _ := y139AESECBEncrypt([]byte(layer2), key2)
 		iv := make([]byte, aes.BlockSize)
 		_, _ = crand.Read(iv)
 		enc1, _ := y139AESCBCEncrypt([]byte(`{"data":"`+hex.EncodeToString(enc2)+`"}`), key1, iv)
@@ -432,7 +433,7 @@ func TestYun139SMSLoginFlow(t *testing.T) {
 	mux.HandleFunc("/thirdlogin", func(w http.ResponseWriter, r *http.Request) {
 		exp := time.Now().Add(60 * 24 * time.Hour).UnixMilli()
 		layer2 := `{"authToken":"a|b|c|` + itoa64(exp) + `|z","account":"13700000000","userDomainId":"ud-s"}`
-		enc2, _ := y139AESCBCEncrypt([]byte(layer2), key2, make([]byte, aes.BlockSize))
+		enc2, _ := y139AESECBEncrypt([]byte(layer2), key2)
 		iv := make([]byte, aes.BlockSize)
 		_, _ = crand.Read(iv)
 		enc1, _ := y139AESCBCEncrypt([]byte(`{"data":"`+hex.EncodeToString(enc2)+`"}`), key1, iv)
@@ -515,4 +516,48 @@ func TestY139MailPublicKey(t *testing.T) {
 	if err != nil || len(back) != 256 {
 		t.Fatalf("加密结果应为 256 字节密文，实际 %d: %v", len(back), err)
 	}
+}
+
+// TestY139AESECB 139 单点登录第二层是 AES/ECB/PKCS7：多块时与 CBC 零 IV 结果不同，
+// 用 NIST 向量验证 ECB 实现本身正确。
+func TestY139AESECB(t *testing.T) {
+	key := make([]byte, 16)
+	ciphertext := make([]byte, 32) // 两块的密文
+	// 用 ECB 加密 32 字节明文，前 16 字节与 CBC 零 IV 相同、第二块不同
+	plain := []byte("0123456789abcdef0123456789abcdef")
+	encECB, err := y139AESECBEncrypt(plain, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encCBC, err := y139AESCBCEncrypt(plain, key, make([]byte, aes.BlockSize))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(encECB[:16], encCBC[:16]) == false {
+		t.Fatal("首块应与 CBC 零 IV 相同")
+	}
+	if bytes.Equal(encECB[16:], encCBC[16:]) {
+		t.Fatal("第二块应与 CBC 不同（否则测不出 ECB/CBC 差异）")
+	}
+	back, err := y139AESECBDecrypt(encECB, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(back, plain) {
+		t.Fatalf("ECB 往返失败: %q", back)
+	}
+	// 跨 32 字节的多块 JSON 必须完整还原（CBC 会在第二块起乱码）
+	long := []byte(`{"authToken":"0123456789abcdef0123456789abcdef","account":"13771882702","userDomainId":"ud"}`)
+	enc, err := y139AESECBEncrypt(long, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := y139AESECBDecrypt(enc, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(out, long) {
+		t.Fatalf("多块 ECB 往返失败: %q", out)
+	}
+	_ = ciphertext
 }

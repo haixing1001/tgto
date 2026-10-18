@@ -724,7 +724,7 @@ func (s *Services) y139Step3(ctx context.Context, username, artifact string) (*y
 	if err != nil {
 		return nil, fmt.Errorf("单点登录 data 非 hex: %w", err)
 	}
-	final, err := y139AESCBCDecrypt(inner, key2, make([]byte, aes.BlockSize))
+	final, err := y139AESECBDecrypt(inner, key2)
 	if err != nil {
 		return nil, fmt.Errorf("单点登录二次解密失败: %w", err)
 	}
@@ -734,7 +734,7 @@ func (s *Services) y139Step3(ctx context.Context, username, artifact string) (*y
 		UserDomainID string `json:"userDomainId"`
 	}
 	if err := json.Unmarshal(final, &out); err != nil || out.AuthToken == "" {
-		return nil, fmt.Errorf("单点登录结果解析失败: %s", truncate(string(final), 200))
+		return nil, fmt.Errorf("单点登录结果解析失败（authToken 缺失）: %s", truncate(string(final), 300))
 	}
 	auth := &y139Auth{
 		Authorization: base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("pc:%s:%s", out.Account, out.AuthToken))),
@@ -1122,6 +1122,36 @@ func y139AESCBCEncrypt(plaintext, key, iv []byte) ([]byte, error) {
 	out := make([]byte, len(padded))
 	cipher.NewCBCEncrypter(block, iv).CryptBlocks(out, padded)
 	return out, nil
+}
+
+// y139AESECBEncrypt AES-ECB + PKCS7（139 单点登录第二层用 ECB，不是 CBC）。
+func y139AESECBEncrypt(plaintext, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	padded := y139PKCS7Pad(plaintext, block.BlockSize())
+	out := make([]byte, len(padded))
+	for bs := 0; bs < len(padded); bs += block.BlockSize() {
+		block.Encrypt(out[bs:bs+block.BlockSize()], padded[bs:bs+block.BlockSize()])
+	}
+	return out, nil
+}
+
+// y139AESECBDecrypt AES-ECB + PKCS7 解密（每块独立解密，块间不做异或）。
+func y139AESECBDecrypt(ciphertext, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(ciphertext)%block.BlockSize() != 0 || len(ciphertext) == 0 {
+		return nil, errors.New("密文长度不是块大小的整数倍")
+	}
+	out := make([]byte, len(ciphertext))
+	for bs := 0; bs < len(ciphertext); bs += block.BlockSize() {
+		block.Decrypt(out[bs:bs+block.BlockSize()], ciphertext[bs:bs+block.BlockSize()])
+	}
+	return y139PKCS7Unpad(out)
 }
 
 func y139AESCBCDecrypt(ciphertext, key, iv []byte) ([]byte, error) {
