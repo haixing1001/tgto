@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/aes"
 	crand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -484,5 +486,33 @@ func TestY139ParseMailLogin(t *testing.T) {
 	p = y139ParseMailLogin([]byte(`var result = {"code":"S_FAIL","summary":"密码错误"}`))
 	if p.Code != "S_FAIL" || p.Summary != "密码错误" {
 		t.Fatalf("JS 解析: %+v", p)
+	}
+}
+
+// TestY139MailPublicKey 邮箱公钥常量必须是有效 PKIX RSA 公钥（手抄错一个字符会导致
+// 服务端返回 PML401010002「短信验证参数被拒绝」）。
+func TestY139MailPublicKey(t *testing.T) {
+	der, err := base64.StdEncoding.DecodeString(y139MailPub)
+	if err != nil {
+		t.Fatalf("公钥 base64 解码失败: %v", err)
+	}
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		t.Fatalf("公钥解析失败: %v", err)
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		t.Fatalf("公钥不是 RSA 类型: %T", pub)
+	}
+	if rsaPub.N == nil || rsaPub.E == 0 || rsaPub.Size() != 256 {
+		t.Fatalf("公钥尺寸异常: %d bit", rsaPub.N.BitLen())
+	}
+	out, err := y139EncryptLoginName("13771882702")
+	if err != nil {
+		t.Fatalf("加密账号失败: %v", err)
+	}
+	back, err := base64.StdEncoding.DecodeString(out)
+	if err != nil || len(back) != 256 {
+		t.Fatalf("加密结果应为 256 字节密文，实际 %d: %v", len(back), err)
 	}
 }

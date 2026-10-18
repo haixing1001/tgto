@@ -78,7 +78,7 @@ var (
 	y139SMSMu   sync.Mutex
 	y139SMSPre  *y139SMSState
 	y139MailSMS = y139MailSMSURL
-	y139MailPub = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnsOHTFtwW5rq/8gGhPlM5Z3RPdeN/d+FYIHb5JmcfBOCozXuT8c+0anvxtkjzghixwNlnmBuhN8OYfS789YuH/qReQbHC7OdlisLildNWPHRNUYcPa0W3lXSG3+81CXK7FDXPvXo5ubw2GqVbIsccMarI1dyfXdi4ITiCXvmM9wYBdUs9yXtoorhlpyYUI2GV8HNsVjWK9P5QZHT3ox5Qy+mjRmvv6RUFJLPOMkOS/pGZ0DwC1ypFZBxstW0/ftVupdOmGWvW7J2/e3dq3A/UvIkC4YUY/diL1wighJx1G9MiRROISjNMvNyUDSTqPJy516+l3sgHEbc067QIJx2NQIDAQAB"
+	y139MailPub = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnsOHTFtwW5rq/8gGhPlM5Z3RPdeN/d+FYIHb5JmcfBOCozXuT8c+0anvxtkjzghixwNlnmBuhN8OYfS789YuH/qReQbHC7OdlisLildNWPHRNUYcPa0W3lXSG3+81CXK7FDXPvXo5ubw2GqVbIsccMarI1dyfXdi4ITiCXvmM9wYBdUs9yXtoorhlpyYUI2GV8HNsQjWK9P5QZHT3ox5Qy+mjRmvv6RUFJLPOMkOS/pGZ0DwC1ypFZBxstW0/ftVupdOmGWvW7J2/e3dq3A/UvIkC4YUY/diL1wighJx1G9MiRROISjNMvNyUDSTqPJy516+l3sgHEbc067QIJx2NQIDAQAB"
 )
 
 // y139RiskScene 10086 邮箱登录风控码 -> 短信验证场景（OpenList 同款映射）。
@@ -408,7 +408,7 @@ func (s *Services) y139SendSMS(ctx context.Context) error {
 	case "PML404010001":
 		return errors.New("短信验证码发送过于频繁，请稍后再试")
 	case "PML401010002":
-		return errors.New("短信验证参数被拒绝，请检查账号后重试")
+		return errors.New("139 邮箱拒绝了短信验证参数：该账号可能已开启登录保护或风控升级，请先用浏览器登录一次 mail.10086.cn，再把完整 Cookie 贴到「邮箱 Cookie」后点登录")
 	}
 	return fmt.Errorf("发送短信验证码失败（code=%s %s）", parsed.Code, parsed.Summary)
 }
@@ -492,7 +492,7 @@ func (s *Services) y139VerifySMS(ctx context.Context, pre *y139SMSState, code st
 func y139EncryptLoginName(account string) (string, error) {
 	der, err := base64.StdEncoding.DecodeString(y139MailPub)
 	if err != nil {
-		return "", fmt.Errorf("邮箱公钥解码失败: %w", err)
+		return "", fmt.Errorf("邮箱公钥解码失败（常量损坏）: %w", err)
 	}
 	pub, err := x509.ParsePKIXPublicKey(der)
 	if err != nil {
